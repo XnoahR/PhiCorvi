@@ -1,0 +1,46 @@
+name: Build Windows app
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build PhiCorvi.exe
+        # --noconsole hides the terminal window; the app has its own UI.
+        # --onefile so people download one thing and double-click it.
+        run: pyinstaller --onefile --noconsole --name PhiCorvi phicorvi.py
+
+      - name: Check it produced something
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/PhiCorvi.exe)) { throw "PhiCorvi.exe was not built" }
+          $size = (Get-Item dist/PhiCorvi.exe).Length / 1MB
+          Write-Host ("built PhiCorvi.exe: {0:N1} MB" -f $size)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhiCorvi-windows
+          path: dist/PhiCorvi.exe
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/PhiCorvi.exe
+          generate_release_notes: true

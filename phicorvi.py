@@ -23,7 +23,13 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from tkinter import messagebox, ttk
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# Packaged as a one-file .exe, __file__ points into a temporary extraction folder
+# that is deleted on exit -- settings saved there would vanish every run. Sit next
+# to the executable the user actually double-clicked instead.
+if getattr(sys, "frozen", False):
+    APP_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(APP_DIR, "phicorvi_config.json")
 
 DEFAULTS = {

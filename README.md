@@ -18,20 +18,30 @@ more or less the job.*
 
 ---
 
+## Download
+
+**Windows:** grab `PhiCorvi.exe` from the
+[latest release](https://github.com/XnoahR/PhiCorvi/releases/latest). Nothing to
+install — double-click it. Python is bundled inside.
+
+Windows will likely say *"Windows protected your PC"* the first time. That's what it
+says about any new app without a paid code-signing certificate. Click **More info** →
+**Run anyway**, or read the source here first — it's all in `phicorvi.py`.
+
+**macOS / Linux:** run from source, `python3 phicorvi.py`. Needs Python 3 and nothing
+else — the app only uses the standard library.
+
+---
+
 ## Quick start
 
 **1. Install and open [VOICEVOX](https://voicevox.hiroshiba.jp/).** Leave it running —
 it's the part that actually speaks.
 
-**2. Download this repo** and run the app:
+**2. Open PhiCorvi.** It starts the bridge itself, and the Status panel tells you
+whether it can see VOICEVOX.
 
-```
-python3 phicorvi.py
-```
-
-Needs Python 3. Nothing to `pip install` — it only uses the standard library.
-
-**3. In the app**, press **Start**, then click **Copy** next to "Yomitan".
+**3. Click **Copy** next to "Yomitan"** in the Connect panel.
 
 **4. In Yomitan**: Settings → Audio → Configure audio playback sources → add a source
 of type **Custom URL (JSON)** → paste → drag it to the **top** of the list.
@@ -164,8 +174,10 @@ the next lookup. For automatic playback, use Yomitan.
 
 ## Setup guides
 
-- [English](docs/SETUP.md)
-- [Bahasa Indonesia](docs/SETUP-id.md) — untuk yang belum terbiasa dengan hal teknis
+- **[Panduan Bahasa Indonesia](docs/PANDUAN-id.md)** — panduan lengkap pakai aplikasi,
+  ditulis untuk yang belum terbiasa hal teknis
+- [English](docs/SETUP.md) — manual setup without the app
+- [Bahasa Indonesia (manual)](docs/SETUP-id.md) — cara manual tanpa aplikasi
 
 ---
 

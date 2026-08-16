@@ -294,7 +294,15 @@ class ScrollList(ttk.Frame):
             target.bind("<Leave>", lambda e: self._wheel(False))
 
     def _on_body(self, _):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        box = self.canvas.bbox("all")
+        self.canvas.configure(scrollregion=box)
+        # Only show the scrollbar when there is something to scroll to -- a dead
+        # scrollbar next to two rows reads as "something is cut off".
+        needed = bool(box) and box[3] > self.canvas.winfo_height()
+        if needed and not self.sb.winfo_ismapped():
+            self.sb.pack(side="right", fill="y")
+        elif not needed and self.sb.winfo_ismapped():
+            self.sb.pack_forget()
 
     def _on_canvas(self, event):
         self.canvas.itemconfigure(self.window, width=event.width)
@@ -332,8 +340,8 @@ class App:
     def __init__(self, root):
         self.root = root
         root.title("PhiCorvi")
-        root.minsize(660, 720)
-        root.geometry("700x780")
+        root.minsize(660, 760)
+        root.geometry("700x840")
 
         self.all_voices = []
         self.engine_ok = None
@@ -474,6 +482,15 @@ class App:
                                     wraplength=380, justify="left")
         self.state_hint.pack(anchor="w", pady=(3, 0))
 
+        # The headline says what to do; these two say which half is at fault, so
+        # you can still see both pieces at a glance.
+        dots = ttk.Frame(left, style="Card.TFrame")
+        dots.pack(anchor="w", pady=(9, 0))
+        self.engine_dot = ttk.Label(dots, text="● VOICEVOX", style="CardFaint.TLabel")
+        self.engine_dot.pack(side="left")
+        self.bridge_dot = ttk.Label(dots, text="● PhiCorvi", style="CardFaint.TLabel")
+        self.bridge_dot.pack(side="left", padx=(16, 0))
+
         right = ttk.Frame(card, style="Card.TFrame")
         right.grid(row=0, column=1, sticky="e")
         self.power_btn = ttk.Button(right, text="Stop", width=11,
@@ -508,6 +525,19 @@ class App:
         self.state_hint.configure(text=hint)
         self.power_btn.configure(text="Stop" if running else "Start")
 
+        if self.engine_ok is None:
+            self.engine_dot.configure(text="○ VOICEVOX", foreground=c["faint"])
+        elif self.engine_ok:
+            self.engine_dot.configure(text="● VOICEVOX  connected", foreground=c["ok"])
+        else:
+            self.engine_dot.configure(text="○ VOICEVOX  not open", foreground=c["bad"])
+
+        if running:
+            self.bridge_dot.configure(text="● PhiCorvi  port %d" % state["port"],
+                                      foreground=c["ok"])
+        else:
+            self.bridge_dot.configure(text="○ PhiCorvi  stopped", foreground=c["faint"])
+
     # -- chosen voices ----------------------------------------------------
 
     def _build_chosen(self):
@@ -517,11 +547,21 @@ class App:
         card = ttk.Frame(self.outer, style="Card.TFrame", padding=(4, 8))
         card.grid(row=2, column=0, sticky="ew")
         self.chosen_card = card
-        self.chosen_list = ScrollList(card, height=118)
+        self.chosen_list = ScrollList(card, height=80)
         self.chosen_list.pack(fill="x", expand=True)
+        # Outside the scrolling area: inside it, this note counted towards the
+        # content height and produced a scrollbar for two voices.
+        self.chosen_note = ttk.Label(
+            card, text="Top voice is used first. The others are backups.",
+            style="CardFaint.TLabel", padding=(14, 6))
+        self.chosen_note.pack(anchor="w")
 
     def render_chosen(self):
         c = self.c
+        # Grow with the number of voices instead of reserving a fixed block, so
+        # two voices don't leave a hole and eight don't squeeze the library.
+        rows = max(2, min(len(state["speakers"]), 4))
+        self.chosen_list.canvas.configure(height=rows * 42)
         self.chosen_list.clear()
         for rank, sid in enumerate(state["speakers"], 1):
             row = ttk.Frame(self.chosen_list.body, style="Row.TFrame", padding=(10, 5))
@@ -550,9 +590,6 @@ class App:
             rm.grid(row=0, column=5, padx=(4, 0))
             rm.state(["disabled"] if len(state["speakers"]) <= 1 else ["!disabled"])
 
-        note = "Top voice is used first. The others are backups."
-        ttk.Label(self.chosen_list.body, text=note, style="CardFaint.TLabel",
-                  padding=(14, 6)).pack(anchor="w")
 
     # -- library ----------------------------------------------------------
 

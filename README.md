@@ -4,6 +4,11 @@ Give Yomitan a local Japanese voice. Every word gets audio — including the rar
 JapanesePod101 and Forvo have never heard of — and it lands in your Anki cards
 automatically.
 
+<p align="center">
+  <img src="docs/img/phicorvi-dark.png" alt="PhiCorvi in dark theme" width="420">
+  <img src="docs/img/phicorvi-light.png" alt="PhiCorvi in light theme" width="420">
+</p>
+
 PhiCorvi connects [VOICEVOX](https://voicevox.hiroshiba.jp/) (a free Japanese speech
 engine that runs on your own machine) to [Yomitan](https://yomitan.wiki/), which can't
 talk to it directly. Point Yomitan at PhiCorvi and it just works.

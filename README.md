@@ -58,8 +58,8 @@ configure.
 | | |
 |---|---|
 | **Start / Stop** | Runs the bridge. Remembers its state and restores it next launch. |
-| **Voices** | Search the full list, add several, reorder them. Typing `whisper` finds the Japanese ささやき / ヒソヒソ styles. |
-| **Preview** | Hear a voice before you commit to it. |
+| **Voices** | Filter by group (ASMR, Female, Male, Tomboy, Sweet, Tsundere, Sexy, Calm, Energetic) or search by name. Add as many as you like and set their order. |
+| **Preview** | Every row has its own ▶ button, so you always hear the voice you clicked. |
 | **Copy** | Ready-to-paste URLs for Yomitan and Manatan. |
 | **Settings** | Port, speed, intonation. Lower intonation = flatter, calmer. |
 | **Theme** | Light and dark, both blue. |

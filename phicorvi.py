@@ -3,7 +3,7 @@
 PhiCorvi -- a small control panel for a local Japanese voice.
 
 Everything the bridge does, with buttons instead of a terminal: start and stop it,
-pick which voices it offers, preview them, and copy the URL to paste into Yomitan.
+pick which voices it offers, preview them, and copy the link to paste into Yomitan.
 
 Needs only Python 3 and a running VOICEVOX engine. No libraries to install.
 Run it with:  python3 phicorvi.py
@@ -39,52 +39,81 @@ DEFAULTS = {
     "speakers": [19, 96],
     "speed": 0.95,
     "intonation": 0.9,
-    "theme": "light",
+    "theme": "dark",
     "was_running": True,
 }
 
 # Ports Chromium refuses to open (ERR_UNSAFE_PORT), plus ones commonly taken by
 # other Japanese-mining tools. Warn rather than let people debug silent audio.
 BLOCKED_PORTS = {
-    5060: "SIP - browsers refuse to connect",
-    5061: "SIP-TLS - browsers refuse to connect",
+    5060: "reserved for internet calling",
+    5061: "reserved for internet calling",
 }
 BUSY_PORTS = {5050: "local-audio-yomichan", 8765: "AnkiConnect", 8770: "Forvo server"}
 
-# Daylight sky above, night sky below. The accent is the same blue shifted for
-# contrast, so the app reads as one colour scheme in either mode.
+PREVIEW_TEXT = "こんばんは、ゆっくり やすんでね"
+
+# Groups built from the style name are exact -- VOICEVOX publishes those.
+STYLE_GROUPS = {
+    "ASMR": ("ささやき", "ヒソヒソ", "囁き", "内緒話"),
+    "Sweet": ("あまあま", "ぶりっ子"),
+    "Tsundere": ("ツンツン", "ツンギレ"),
+    "Sexy": ("セクシー", "クイーン"),
+    "Calm": ("おちつき", "のんびり", "しっとり", "読み聞かせ", "低血圧"),
+    "Energetic": ("元気", "熱血", "わーい", "うきうき", "たのしい", "喜び", "楽々"),
+}
+
+# VOICEVOX publishes no gender field, so this is hand-maintained and may be
+# wrong or incomplete. Characters left out simply don't appear under Female or
+# Male -- they are still findable by name and in every style group. Correct it
+# freely; nothing else depends on it.
+FEMALE = {
+    "四国めたん", "春日部つむぎ", "波音リツ", "雨晴はう", "冥鳴ひまり", "九州そら",
+    "もち子さん", "WhiteCUL", "後鬼", "No.7", "櫻歌ミコ", "小夜/SAYO",
+    "ナースロボ＿タイプＴ", "春歌ナナ", "猫使アル", "猫使ビィ", "中国うさぎ",
+    "あいえるたん", "満別花丸", "琴詠ニア", "Voidoll", "ぞん子",
+}
+MALE = {
+    "玄野武宏", "白上虎太郎", "青山龍星", "剣崎雌雄", "ちび式じい",
+    "†聖騎士 紅桜†", "雀松朱司", "麒ヶ島宗麟",
+}
+TOMBOY = {"波音リツ"}
+
+FILTERS = ["All", "ASMR", "Female", "Male", "Tomboy", "Sweet", "Tsundere", "Sexy",
+           "Calm", "Energetic"]
+
 PALETTES = {
-    "light": {
-        "bg": "#e7f2fb",
-        "surface": "#ffffff",
-        "field": "#ffffff",
-        "readonly": "#f2f8fd",
-        "ink": "#10293f",
-        "muted": "#456780",
-        "faint": "#53748d",
-        "border": "#b9d9f1",
-        "accent": "#0f66b0",
-        "accent_ink": "#ffffff",
-        "accent_hover": "#0b5390",
-        "sel_bg": "#cfe6fa",
-        "ok": "#1f7a4d",
-        "bad": "#b3261e",
-    },
     "dark": {
-        "bg": "#0d1a26",
-        "surface": "#152736",
-        "field": "#1b2f42",
-        "readonly": "#16293a",
-        "ink": "#dceaf6",
-        "muted": "#8fadc7",
-        "faint": "#7c9db8",
-        "border": "#2a4b68",
-        "accent": "#4ea8e8",
-        "accent_ink": "#08151f",
-        "accent_hover": "#6bbcf2",
-        "sel_bg": "#24506f",
-        "ok": "#5cc98d",
-        "bad": "#ff8f85",
+        "bg": "#0e1116",
+        "surface": "#161a21",
+        "raised": "#1d222c",
+        "field": "#11151b",
+        "ink": "#e7ebf2",
+        "muted": "#98a3b3",
+        "faint": "#7d8899",
+        "border": "#262d39",
+        "accent": "#38bdf8",
+        "accent_ink": "#04222f",
+        "accent_hover": "#61ccfa",
+        "ok": "#34d399",
+        "bad": "#f87171",
+        "warn": "#fbbf24",
+    },
+    "light": {
+        "bg": "#eef4f9",
+        "surface": "#ffffff",
+        "raised": "#f5f9fc",
+        "field": "#ffffff",
+        "ink": "#0d1a25",
+        "muted": "#44586a",
+        "faint": "#53687b",
+        "border": "#d2e2ef",
+        "accent": "#0277b5",
+        "accent_ink": "#ffffff",
+        "accent_hover": "#01608f",
+        "ok": "#046c47",
+        "bad": "#b3261e",
+        "warn": "#8a5a08",
     },
 }
 
@@ -141,7 +170,7 @@ def synthesize(text, speaker):
 
 
 def play_wav(data):
-    path = os.path.join(tempfile.gettempdir(), "voicevox_preview.wav")
+    path = os.path.join(tempfile.gettempdir(), "phicorvi_preview.wav")
     with open(path, "wb") as fh:
         fh.write(data)
     system = platform.system()
@@ -241,287 +270,483 @@ def bridge_running():
     return _server is not None
 
 
+# ------------------------------------------------------------------- scrolling
+
+class ScrollList(ttk.Frame):
+    """A vertically scrolling column of rows. Listbox can't hold buttons, and a
+    per-row play button is the only way to make 'preview which voice?' obvious."""
+
+    def __init__(self, parent, height=170):
+        super().__init__(parent)
+        self.canvas = tk.Canvas(self, highlightthickness=0, bd=0, height=height)
+        self.sb = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.body = ttk.Frame(self.canvas, style="Card.TFrame")
+        self.window = self.canvas.create_window((0, 0), window=self.body, anchor="nw")
+
+        self.canvas.configure(yscrollcommand=self.sb.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.sb.pack(side="right", fill="y")
+
+        self.body.bind("<Configure>", self._on_body)
+        self.canvas.bind("<Configure>", self._on_canvas)
+        for target in (self.canvas, self.body):
+            target.bind("<Enter>", lambda e: self._wheel(True))
+            target.bind("<Leave>", lambda e: self._wheel(False))
+
+    def _on_body(self, _):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas(self, event):
+        self.canvas.itemconfigure(self.window, width=event.width)
+
+    def _wheel(self, on):
+        if on:
+            self.canvas.bind_all("<MouseWheel>", self._scroll)
+            self.canvas.bind_all("<Button-4>", self._scroll)
+            self.canvas.bind_all("<Button-5>", self._scroll)
+        else:
+            self.canvas.unbind_all("<MouseWheel>")
+            self.canvas.unbind_all("<Button-4>")
+            self.canvas.unbind_all("<Button-5>")
+
+    def _scroll(self, event):
+        if getattr(event, "num", None) == 4:
+            step = -1
+        elif getattr(event, "num", None) == 5:
+            step = 1
+        else:
+            step = -1 if event.delta > 0 else 1
+        self.canvas.yview_scroll(step, "units")
+
+    def clear(self):
+        for child in self.body.winfo_children():
+            child.destroy()
+
+    def paint(self, bg):
+        self.canvas.configure(bg=bg)
+
+
 # ------------------------------------------------------------------------- gui
-
-PLACEHOLDER = "search, e.g. whisper or sasayaki"
-
 
 class App:
     def __init__(self, root):
         self.root = root
         root.title("PhiCorvi")
-        root.minsize(700, 680)
-        root.geometry("760x720")
+        root.minsize(660, 720)
+        root.geometry("700x780")
 
         self.all_voices = []
-        self.filtered = []
-        self.hints = []
+        self.engine_ok = None
+        self._filter_job = None
+        self.advanced_open = False
+        self.group = "All"
 
         load_config()
         self.style = ttk.Style()
         self.style.theme_use("clam")
 
-        self.outer = ttk.Frame(root, padding=14)
+        self.outer = ttk.Frame(root, padding=16)
         self.outer.pack(fill="both", expand=True)
         self.outer.columnconfigure(0, weight=1)
 
-        self._build_status(self.outer)
-        self._build_voices(self.outer)
-        self._build_tuning(self.outer)
-        self._build_connect(self.outer)
-        self.outer.rowconfigure(1, weight=1)
+        self._build_header()
+        self._build_chosen()
+        self._build_library()
+        self._build_connect()
+        self._build_advanced()
 
-        self.port_var.set(str(state["port"]))
-        self.speed_var.set("%.2f" % state["speed"])
-        self.intonation_var.set("%.2f" % state["intonation"])
         self.apply_theme()
-        self.refresh_selected()
+        self.set_group("All")
+        self.render_chosen()
         self.update_urls()
 
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.poll_status()
         self.load_voices_async()
-        # Pick up where the last session left off, so opening the app is usually
-        # the only step -- forgetting to press Start is the classic way to end up
-        # with silent lookups.
         if state.get("was_running"):
             self.root.after(400, self.autostart)
 
-    def autostart(self):
-        if bridge_running():
-            return
-        try:
-            start_bridge()
-        except OSError:
-            return  # something else holds the port; leave it to the user
-        self.start_btn.configure(text="Stop")
-        self.refresh_status_colors()
-
-    # -- theming ----------------------------------------------------------
+    # -- theme ------------------------------------------------------------
 
     @property
-    def colors(self):
-        return PALETTES.get(state["theme"], PALETTES["light"])
+    def c(self):
+        return PALETTES.get(state["theme"], PALETTES["dark"])
 
     def apply_theme(self):
-        c = self.colors
-        s = self.style
+        c, s = self.c, self.style
         self.root.configure(bg=c["bg"])
 
         s.configure(".", background=c["bg"], foreground=c["ink"],
                     fieldbackground=c["field"], bordercolor=c["border"],
                     lightcolor=c["border"], darkcolor=c["border"],
-                    focuscolor=c["accent"])
+                    focuscolor=c["accent"], borderwidth=0)
         s.configure("TFrame", background=c["bg"])
         s.configure("TLabel", background=c["bg"], foreground=c["ink"])
-        s.configure("Hint.TLabel", background=c["bg"], foreground=c["faint"])
         s.configure("TSeparator", background=c["border"])
 
-        s.configure("TLabelframe", background=c["surface"], bordercolor=c["border"],
-                    lightcolor=c["border"], darkcolor=c["border"], relief="solid",
-                    borderwidth=1)
-        s.configure("TLabelframe.Label", background=c["surface"],
-                    foreground=c["accent"], font=("TkDefaultFont", 9, "bold"))
         s.configure("Card.TFrame", background=c["surface"])
         s.configure("Card.TLabel", background=c["surface"], foreground=c["ink"])
-        s.configure("CardHint.TLabel", background=c["surface"], foreground=c["faint"])
+        s.configure("CardMuted.TLabel", background=c["surface"], foreground=c["muted"])
+        s.configure("CardFaint.TLabel", background=c["surface"], foreground=c["faint"])
+        s.configure("Row.TFrame", background=c["surface"])
+        s.configure("Rank.TLabel", background=c["surface"], foreground=c["accent"],
+                    font=("TkDefaultFont", 9, "bold"))
+        s.configure("Section.TLabel", background=c["bg"], foreground=c["muted"],
+                    font=("TkDefaultFont", 9, "bold"))
+        s.configure("Big.TLabel", background=c["surface"], foreground=c["ink"],
+                    font=("TkDefaultFont", 14, "bold"))
 
-        s.configure("TButton", background=c["surface"], foreground=c["ink"],
-                    bordercolor=c["border"], padding=(10, 5), relief="flat")
-        s.map("TButton",
-              background=[("pressed", c["sel_bg"]), ("active", c["sel_bg"])],
+        s.configure("TButton", background=c["raised"], foreground=c["ink"],
+                    bordercolor=c["border"], relief="flat", padding=(12, 7))
+        s.map("TButton", background=[("active", c["border"]), ("pressed", c["border"])],
               foreground=[("disabled", c["faint"])])
 
-        s.configure("Accent.TButton", background=c["accent"],
-                    foreground=c["accent_ink"], bordercolor=c["accent"],
-                    padding=(10, 6), relief="flat",
+        s.configure("Accent.TButton", background=c["accent"], foreground=c["accent_ink"],
+                    relief="flat", padding=(14, 8), font=("TkDefaultFont", 10, "bold"))
+        s.map("Accent.TButton", background=[("active", c["accent_hover"]),
+                                            ("pressed", c["accent_hover"])],
+              foreground=[("active", c["accent_ink"])])
+
+        s.configure("Icon.TButton", background=c["surface"], foreground=c["muted"],
+                    relief="flat", padding=(6, 3), font=("TkDefaultFont", 10))
+        s.map("Icon.TButton", background=[("active", c["raised"])],
+              foreground=[("active", c["accent"]), ("disabled", c["border"])])
+
+        s.configure("Play.TButton", background=c["surface"], foreground=c["accent"],
+                    relief="flat", padding=(7, 3), font=("TkDefaultFont", 11))
+        s.map("Play.TButton", background=[("active", c["raised"])])
+
+        s.configure("Link.TButton", background=c["bg"], foreground=c["muted"],
+                    relief="flat", padding=(2, 2))
+        s.map("Link.TButton", background=[("active", c["bg"])],
+              foreground=[("active", c["accent"])])
+
+        s.configure("Chip.TButton", background=c["surface"], foreground=c["muted"],
+                    relief="flat", padding=(11, 5), font=("TkDefaultFont", 9))
+        s.map("Chip.TButton", background=[("active", c["raised"])],
+              foreground=[("active", c["ink"])])
+        s.configure("ChipOn.TButton", background=c["accent"], foreground=c["accent_ink"],
+                    relief="flat", padding=(11, 5),
                     font=("TkDefaultFont", 9, "bold"))
-        s.map("Accent.TButton",
-              background=[("pressed", c["accent_hover"]), ("active", c["accent_hover"])],
+        s.map("ChipOn.TButton", background=[("active", c["accent_hover"])],
               foreground=[("active", c["accent_ink"])])
 
         s.configure("TEntry", fieldbackground=c["field"], foreground=c["ink"],
-                    bordercolor=c["border"], insertcolor=c["ink"], padding=4)
-        s.map("TEntry", fieldbackground=[("readonly", c["readonly"])],
-              foreground=[("readonly", c["muted"])])
+                    bordercolor=c["border"], insertcolor=c["ink"], padding=7)
         s.configure("TSpinbox", fieldbackground=c["field"], foreground=c["ink"],
                     bordercolor=c["border"], arrowcolor=c["accent"],
-                    insertcolor=c["ink"], padding=3)
+                    insertcolor=c["ink"], padding=5)
+        s.configure("Vertical.TScrollbar", background=c["raised"],
+                    troughcolor=c["bg"], bordercolor=c["bg"],
+                    arrowcolor=c["muted"], relief="flat")
+        s.map("Vertical.TScrollbar", background=[("active", c["border"])])
 
-        for box in (self.available, self.selected):
-            box.configure(bg=c["field"], fg=c["ink"], selectbackground=c["sel_bg"],
-                          selectforeground=c["ink"], highlightthickness=1,
-                          highlightbackground=c["border"],
-                          highlightcolor=c["accent"], borderwidth=0,
-                          relief="flat")
+        for widget in (self.header, self.chosen_card, self.library_card,
+                       self.connect_card):
+            widget.configure(style="Card.TFrame")
+        self.chosen_list.paint(c["surface"])
+        self.library_list.paint(c["surface"])
 
-        for label in self.hints:
-            label.configure(style="CardHint.TLabel")
-
-        self.search.configure(
-            foreground=c["faint"] if self.search.get() == PLACEHOLDER else c["ink"])
-        self.theme_btn.configure(
-            text="Dark theme" if state["theme"] == "light" else "Light theme")
-        self.refresh_status_colors()
+        self.theme_btn.configure(text="☀  Light" if state["theme"] == "dark"
+                                 else "☾  Dark")
+        self.render_status()
+        self.render_chosen()
+        self.render_library()
 
     def toggle_theme(self):
-        state["theme"] = "dark" if state["theme"] == "light" else "light"
+        state["theme"] = "light" if state["theme"] == "dark" else "dark"
         self.apply_theme()
         save_config()
 
-    # -- sections ---------------------------------------------------------
+    # -- header -----------------------------------------------------------
 
-    def _build_status(self, parent):
-        box = ttk.LabelFrame(parent, text=" Status ", padding=12)
-        box.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        box.columnconfigure(1, weight=1)
+    def _build_header(self):
+        card = ttk.Frame(self.outer, style="Card.TFrame", padding=16)
+        card.grid(row=0, column=0, sticky="ew")
+        card.columnconfigure(0, weight=1)
+        self.header = card
 
-        ttk.Label(box, text="VOICEVOX engine", style="Card.TLabel").grid(
-            row=0, column=0, sticky="w")
-        self.engine_label = ttk.Label(box, text="checking...", style="Card.TLabel")
-        self.engine_label.grid(row=0, column=1, sticky="w", padx=(10, 0))
+        left = ttk.Frame(card, style="Card.TFrame")
+        left.grid(row=0, column=0, sticky="w")
+        self.state_label = ttk.Label(left, text="Starting…", style="Big.TLabel")
+        self.state_label.pack(anchor="w")
+        self.state_hint = ttk.Label(left, text="", style="CardMuted.TLabel",
+                                    wraplength=380, justify="left")
+        self.state_hint.pack(anchor="w", pady=(3, 0))
 
-        ttk.Label(box, text="Bridge", style="Card.TLabel").grid(
-            row=1, column=0, sticky="w", pady=(6, 0))
-        self.bridge_label = ttk.Label(box, text="stopped", style="Card.TLabel")
-        self.bridge_label.grid(row=1, column=1, sticky="w", padx=(10, 0), pady=(6, 0))
-
-        side = ttk.Frame(box, style="Card.TFrame")
-        side.grid(row=0, column=2, rowspan=2, sticky="e")
-        self.start_btn = ttk.Button(side, text="Start", width=13,
+        right = ttk.Frame(card, style="Card.TFrame")
+        right.grid(row=0, column=1, sticky="e")
+        self.power_btn = ttk.Button(right, text="Stop", width=11,
                                     style="Accent.TButton", command=self.toggle_bridge)
-        self.start_btn.pack()
-        self.theme_btn = ttk.Button(side, text="Dark theme", width=13,
-                                    command=self.toggle_theme)
-        self.theme_btn.pack(pady=(6, 0))
+        self.power_btn.pack()
+        self.theme_btn = ttk.Button(right, text="☾  Dark", width=11,
+                                    style="Link.TButton", command=self.toggle_theme)
+        self.theme_btn.pack(pady=(8, 0))
 
-    def _build_voices(self, parent):
-        box = ttk.LabelFrame(parent, text=" Voices ", padding=12)
-        box.grid(row=1, column=0, sticky="nsew")
-        box.columnconfigure(0, weight=3)
-        box.columnconfigure(2, weight=2)
-        box.rowconfigure(2, weight=1)
+    def render_status(self):
+        c = self.c
+        running = bridge_running()
+        if self.engine_ok is False:
+            title, hint, colour = (
+                "VOICEVOX is not open",
+                "Open the VOICEVOX app and wait a few seconds. It's the part that "
+                "actually makes the sound.",
+                c["bad"])
+        elif not running:
+            title, hint, colour = (
+                "Paused",
+                "Yomitan won't get audio until you press Start.",
+                c["warn"])
+        elif self.engine_ok is None:
+            title, hint, colour = ("Checking…", "", c["muted"])
+        else:
+            title, hint, colour = (
+                "Ready",
+                "Hover a Japanese word in Yomitan and it will speak.",
+                c["ok"])
+        self.state_label.configure(text=title, foreground=colour)
+        self.state_hint.configure(text=hint)
+        self.power_btn.configure(text="Stop" if running else "Start")
 
-        ttk.Label(box, text="Available", style="Card.TLabel").grid(
+    # -- chosen voices ----------------------------------------------------
+
+    def _build_chosen(self):
+        ttk.Label(self.outer, text="VOICES YOMITAN WILL USE",
+                  style="Section.TLabel").grid(row=1, column=0, sticky="w",
+                                               pady=(18, 6))
+        card = ttk.Frame(self.outer, style="Card.TFrame", padding=(4, 8))
+        card.grid(row=2, column=0, sticky="ew")
+        self.chosen_card = card
+        self.chosen_list = ScrollList(card, height=118)
+        self.chosen_list.pack(fill="x", expand=True)
+
+    def render_chosen(self):
+        c = self.c
+        self.chosen_list.clear()
+        for rank, sid in enumerate(state["speakers"], 1):
+            row = ttk.Frame(self.chosen_list.body, style="Row.TFrame", padding=(10, 5))
+            row.pack(fill="x")
+            row.columnconfigure(2, weight=1)
+
+            ttk.Label(row, text="%d" % rank, style="Rank.TLabel", width=2).grid(
+                row=0, column=0)
+            ttk.Button(row, text="▶", style="Play.TButton", width=3,
+                       command=lambda s=sid: self.preview(s)).grid(row=0, column=1,
+                                                                   padx=(4, 8))
+            ttk.Label(row, text=_names.get(sid, "speaker %d" % sid),
+                      style="Card.TLabel").grid(row=0, column=2, sticky="w")
+
+            first, last = rank == 1, rank == len(state["speakers"])
+            up = ttk.Button(row, text="↑", style="Icon.TButton", width=2,
+                            command=lambda i=rank - 1: self.move(i, -1))
+            up.grid(row=0, column=3)
+            up.state(["disabled"] if first else ["!disabled"])
+            down = ttk.Button(row, text="↓", style="Icon.TButton", width=2,
+                              command=lambda i=rank - 1: self.move(i, 1))
+            down.grid(row=0, column=4)
+            down.state(["disabled"] if last else ["!disabled"])
+            rm = ttk.Button(row, text="✕", style="Icon.TButton", width=2,
+                            command=lambda s=sid: self.remove_voice(s))
+            rm.grid(row=0, column=5, padx=(4, 0))
+            rm.state(["disabled"] if len(state["speakers"]) <= 1 else ["!disabled"])
+
+        note = "Top voice is used first. The others are backups."
+        ttk.Label(self.chosen_list.body, text=note, style="CardFaint.TLabel",
+                  padding=(14, 6)).pack(anchor="w")
+
+    # -- library ----------------------------------------------------------
+
+    def _build_library(self):
+        bar = ttk.Frame(self.outer)
+        bar.grid(row=3, column=0, sticky="ew", pady=(18, 0))
+        bar.columnconfigure(0, weight=1)
+        header = ttk.Frame(bar)
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(1, weight=1)
+        ttk.Label(header, text="ADD A VOICE", style="Section.TLabel").grid(
             row=0, column=0, sticky="w")
-        ttk.Label(box, text="Used by Yomitan (in order)", style="Card.TLabel").grid(
-            row=0, column=2, sticky="w")
-
+        ttk.Label(header, text="type a name, or \"whisper\" for the soft ones",
+                  style="Section.TLabel").grid(row=0, column=1, sticky="e")
         self.search_var = tk.StringVar()
-        self.search = ttk.Entry(box, textvariable=self.search_var)
-        self.search.grid(row=1, column=0, sticky="ew", pady=(5, 7))
-        self.search.insert(0, PLACEHOLDER)
-        self.search.bind("<FocusIn>", self._search_focus)
-        self.search.bind("<FocusOut>", self._search_blur)
+        entry = ttk.Entry(bar, textvariable=self.search_var)
+        entry.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        self.search_entry = entry
+        self.search_var.trace_add("write", lambda *_: self.debounce_filter())
 
-        self.available = tk.Listbox(box, exportselection=False, activestyle="none",
-                                    height=9)
-        self.available.grid(row=2, column=0, sticky="nsew")
-        self.available.bind("<Double-Button-1>", lambda e: self.add_voice())
+        chips = ttk.Frame(bar)
+        chips.grid(row=2, column=0, sticky="w", pady=(8, 0))
+        self.chips = {}
+        for i, name in enumerate(FILTERS):
+            btn = ttk.Button(chips, text=name, style="Chip.TButton",
+                             command=lambda n=name: self.set_group(n))
+            btn.grid(row=i // 5, column=i % 5, padx=(0, 6), pady=2, sticky="w")
+            self.chips[name] = btn
 
-        mid = ttk.Frame(box, style="Card.TFrame")
-        mid.grid(row=2, column=1, padx=12, sticky="n")
-        ttk.Button(mid, text="Add →", width=11, command=self.add_voice).pack(pady=2)
-        ttk.Button(mid, text="← Remove", width=11, command=self.remove_voice).pack(pady=2)
-        ttk.Separator(mid, orient="horizontal").pack(fill="x", pady=9)
-        ttk.Button(mid, text="Move up", width=11, command=lambda: self.move(-1)).pack(pady=2)
-        ttk.Button(mid, text="Move down", width=11, command=lambda: self.move(1)).pack(pady=2)
-        ttk.Separator(mid, orient="horizontal").pack(fill="x", pady=9)
-        ttk.Button(mid, text="Preview", width=11, style="Accent.TButton",
-                   command=self.preview).pack(pady=2)
+        card = ttk.Frame(self.outer, style="Card.TFrame", padding=(4, 8))
+        card.grid(row=4, column=0, sticky="nsew", pady=(8, 0))
+        self.outer.rowconfigure(4, weight=1)
+        self.library_card = card
+        self.library_list = ScrollList(card, height=190)
+        self.library_list.pack(fill="both", expand=True)
 
-        self.selected = tk.Listbox(box, exportselection=False, activestyle="none",
-                                   height=9)
-        self.selected.grid(row=2, column=2, sticky="nsew")
+    def set_group(self, name):
+        self.group = name
+        for label, btn in self.chips.items():
+            btn.configure(style="ChipOn.TButton" if label == name else "Chip.TButton")
+        self.render_library()
 
-        hint = ttk.Label(
-            box,
-            text="Yomitan plays the first voice that works. Preview uses whichever row "
-                 "is highlighted.",
-            wraplength=660, style="CardHint.TLabel")
-        hint.grid(row=3, column=0, columnspan=3, sticky="w", pady=(9, 0))
-        self.hints.append(hint)
+    def debounce_filter(self):
+        if self._filter_job:
+            self.root.after_cancel(self._filter_job)
+        self._filter_job = self.root.after(160, self.render_library)
 
-        # Attach last: setting the placeholder text fires this, and the listbox it
-        # filters has to exist by then.
-        self.search_var.trace_add("write", lambda *_: self.apply_filter())
+    def in_group(self, speaker, style, group):
+        if group == "All":
+            return True
+        if group == "Female":
+            return speaker in FEMALE
+        if group == "Male":
+            return speaker in MALE
+        if group == "Tomboy":
+            return speaker in TOMBOY or "ボーイ" in style
+        return any(word in style for word in STYLE_GROUPS.get(group, ()))
 
-    def _build_tuning(self, parent):
-        box = ttk.LabelFrame(parent, text=" Settings ", padding=12)
-        box.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+    def matches(self, sid, speaker, style):
+        if not self.in_group(speaker, style, self.group):
+            return False
+        needle = self.search_var.get().lower().strip()
+        if not needle:
+            return True
+        # "whisper" is what an English speaker types; the styles are named in
+        # Japanese, so translate it rather than return nothing.
+        if needle in ("whisper", "soft", "asmr", "bisik"):
+            return any(w in style for w in STYLE_GROUPS["ASMR"])
+        return needle in ("%s %s" % (speaker, style)).lower() or needle == str(sid)
 
-        ttk.Label(box, text="Port", style="Card.TLabel").grid(row=0, column=0, sticky="w")
-        self.port_var = tk.StringVar()
-        ttk.Entry(box, textvariable=self.port_var, width=8).grid(
-            row=0, column=1, padx=(8, 22))
+    def render_library(self):
+        self._filter_job = None
+        self.library_list.clear()
 
-        ttk.Label(box, text="Speed", style="Card.TLabel").grid(row=0, column=2, sticky="w")
-        self.speed_var = tk.StringVar()
-        ttk.Spinbox(box, from_=0.5, to=1.5, increment=0.05, width=6,
-                    textvariable=self.speed_var).grid(row=0, column=3, padx=(8, 22))
+        if not self.all_voices:
+            msg = ("Waiting for VOICEVOX…" if self.engine_ok is not True
+                   else "No voices found.")
+            ttk.Label(self.library_list.body, text=msg, style="CardFaint.TLabel",
+                      padding=14).pack(anchor="w")
+            return
 
-        ttk.Label(box, text="Intonation", style="Card.TLabel").grid(
-            row=0, column=4, sticky="w")
-        self.intonation_var = tk.StringVar()
-        ttk.Spinbox(box, from_=0.0, to=1.5, increment=0.05, width=6,
-                    textvariable=self.intonation_var).grid(row=0, column=5, padx=(8, 0))
+        shown = 0
+        for sid, speaker, style in self.all_voices:
+            if not self.matches(sid, speaker, style):
+                continue
+            shown += 1
+            chosen = sid in state["speakers"]
+            row = ttk.Frame(self.library_list.body, style="Row.TFrame", padding=(10, 4))
+            row.pack(fill="x")
+            row.columnconfigure(1, weight=1)
 
-        hint = ttk.Label(box, text="Lower intonation = flatter, calmer delivery.",
-                         style="CardHint.TLabel")
-        hint.grid(row=1, column=0, columnspan=6, sticky="w", pady=(9, 0))
-        self.hints.append(hint)
+            ttk.Button(row, text="▶", style="Play.TButton", width=3,
+                       command=lambda s=sid: self.preview(s)).grid(row=0, column=0,
+                                                                   padx=(0, 8))
+            ttk.Label(row, text="%s (%s)" % (speaker, style),
+                      style="Card.TLabel" if not chosen else "CardFaint.TLabel").grid(
+                row=0, column=1, sticky="w")
+            if chosen:
+                ttk.Label(row, text="added", style="CardFaint.TLabel").grid(row=0,
+                                                                            column=2)
+            else:
+                ttk.Button(row, text="+  Add", style="Icon.TButton",
+                           command=lambda s=sid: self.add_voice(s)).grid(row=0,
+                                                                         column=2)
+        if not shown:
+            ttk.Label(self.library_list.body,
+                      text="Nothing matches that. Try a shorter word.",
+                      style="CardFaint.TLabel", padding=14).pack(anchor="w")
 
-    def _build_connect(self, parent):
-        box = ttk.LabelFrame(parent, text=" Connect ", padding=12)
-        box.grid(row=3, column=0, sticky="ew", pady=(12, 0))
-        box.columnconfigure(1, weight=1)
+    # -- connect ----------------------------------------------------------
 
-        ttk.Label(box, text="Yomitan", style="Card.TLabel").grid(row=0, column=0, sticky="w")
-        self.yomitan_var = tk.StringVar()
-        ttk.Entry(box, textvariable=self.yomitan_var, state="readonly").grid(
-            row=0, column=1, sticky="ew", padx=10)
-        ttk.Button(box, text="Copy", width=9,
-                   command=lambda: self.copy(self.yomitan_var.get())).grid(row=0, column=2)
+    def _build_connect(self):
+        ttk.Label(self.outer, text="CONNECT", style="Section.TLabel").grid(
+            row=5, column=0, sticky="w", pady=(18, 6))
+        card = ttk.Frame(self.outer, style="Card.TFrame", padding=14)
+        card.grid(row=6, column=0, sticky="ew")
+        card.columnconfigure(0, weight=1)
+        self.connect_card = card
 
-        ttk.Label(box, text="Manatan", style="Card.TLabel").grid(
-            row=1, column=0, sticky="w", pady=(7, 0))
-        self.manatan_var = tk.StringVar()
-        ttk.Entry(box, textvariable=self.manatan_var, state="readonly").grid(
-            row=1, column=1, sticky="ew", padx=10, pady=(7, 0))
-        ttk.Button(box, text="Copy", width=9,
-                   command=lambda: self.copy(self.manatan_var.get())).grid(
-            row=1, column=2, pady=(7, 0))
+        ttk.Label(card, text="Yomitan → Settings → Audio → add a source of type "
+                             "\"Custom URL (JSON)\" → paste → drag it to the top.",
+                  style="CardMuted.TLabel", wraplength=430,
+                  justify="left").grid(row=0, column=0, sticky="w")
 
-        hint = ttk.Label(
-            box,
-            text="Yomitan: Settings → Audio → add a Custom URL (JSON) source, "
-                 "paste, then drag it to the top of the list.",
-            wraplength=660, style="CardHint.TLabel")
-        hint.grid(row=2, column=0, columnspan=3, sticky="w", pady=(9, 0))
-        self.hints.append(hint)
+        buttons = ttk.Frame(card, style="Card.TFrame")
+        buttons.grid(row=0, column=1, sticky="e", padx=(12, 0))
+        self.copy_btn = ttk.Button(buttons, text="Copy link", width=13,
+                                   style="Accent.TButton",
+                                   command=lambda: self.copy(self.yomitan_url, self.copy_btn,
+                                                             "Copy link"))
+        self.copy_btn.pack()
+        self.copy_manatan_btn = ttk.Button(buttons, text="for Manatan", width=13,
+                                           style="Link.TButton",
+                                           command=lambda: self.copy(
+                                               self.manatan_url, self.copy_manatan_btn,
+                                               "for Manatan"))
+        self.copy_manatan_btn.pack(pady=(6, 0))
 
-    # -- helpers ----------------------------------------------------------
-
-    def _search_focus(self, _):
-        if self.search.get() == PLACEHOLDER:
-            self.search.delete(0, "end")
-            self.search.configure(foreground=self.colors["ink"])
-
-    def _search_blur(self, _):
-        if not self.search.get():
-            self.search.insert(0, PLACEHOLDER)
-            self.search.configure(foreground=self.colors["faint"])
-
-    def search_text(self):
-        value = self.search_var.get()
-        return "" if value == PLACEHOLDER else value.lower().strip()
-
-    def label_for(self, sid):
-        return _names.get(sid, "speaker %d" % sid)
-
-    def copy(self, text):
+    def copy(self, text, button, label):
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
+        button.configure(text="Copied ✓")
+        self.root.after(1400, lambda: button.configure(text=label))
+
+    def update_urls(self):
+        port = state["port"]
+        self.yomitan_url = "http://localhost:%d/?term={term}&reading={reading}" % port
+        self.manatan_url = ("http://localtest.me:%d/audio.wav?term={term}&reading={reading}"
+                            % port)
+
+    # -- advanced ---------------------------------------------------------
+
+    def _build_advanced(self):
+        self.adv_toggle = ttk.Button(self.outer, text="▸  Advanced settings",
+                                     style="Link.TButton", command=self.toggle_advanced)
+        self.adv_toggle.grid(row=7, column=0, sticky="w", pady=(12, 0))
+
+        self.adv = ttk.Frame(self.outer, style="Card.TFrame", padding=14)
+        self.adv.columnconfigure(6, weight=1)
+
+        ttk.Label(self.adv, text="Port", style="Card.TLabel").grid(row=0, column=0)
+        self.port_var = tk.StringVar(value=str(state["port"]))
+        ttk.Entry(self.adv, textvariable=self.port_var, width=7).grid(
+            row=0, column=1, padx=(8, 20))
+        ttk.Label(self.adv, text="Speed", style="Card.TLabel").grid(row=0, column=2)
+        self.speed_var = tk.StringVar(value="%.2f" % state["speed"])
+        ttk.Spinbox(self.adv, from_=0.5, to=1.5, increment=0.05, width=5,
+                    textvariable=self.speed_var).grid(row=0, column=3, padx=(8, 20))
+        ttk.Label(self.adv, text="Intonation", style="Card.TLabel").grid(row=0, column=4)
+        self.intonation_var = tk.StringVar(value="%.2f" % state["intonation"])
+        ttk.Spinbox(self.adv, from_=0.0, to=1.5, increment=0.05, width=5,
+                    textvariable=self.intonation_var).grid(row=0, column=5, padx=(8, 0))
+
+        ttk.Label(self.adv, text="Lower intonation sounds flatter and calmer. "
+                                 "Changing the port needs a restart of the link above.",
+                  style="CardFaint.TLabel", wraplength=520,
+                  justify="left").grid(row=1, column=0, columnspan=7, sticky="w",
+                                       pady=(10, 0))
+
+    def toggle_advanced(self):
+        self.advanced_open = not self.advanced_open
+        if self.advanced_open:
+            self.adv.grid(row=8, column=0, sticky="ew", pady=(8, 0))
+            self.adv_toggle.configure(text="▾  Advanced settings")
+        else:
+            self.adv.grid_remove()
+            self.adv_toggle.configure(text="▸  Advanced settings")
+
+    def read_tuning(self):
+        try:
+            state["speed"] = float(self.speed_var.get())
+            state["intonation"] = float(self.intonation_var.get())
+        except ValueError:
+            pass
 
     # -- voices -----------------------------------------------------------
 
@@ -539,201 +764,120 @@ class App:
         self.all_voices = voices
         for sid, speaker, style in voices:
             _names[sid] = "%s (%s)" % (speaker, style)
-        self.apply_filter()
-        self.refresh_selected()
+        self.render_library()
+        self.render_chosen()
 
-    def apply_filter(self):
-        needle = self.search_text()
-        # "whisper" is the word an English speaker reaches for; the styles are
-        # actually named in Japanese, so translate the query for them.
-        aliases = {"whisper": ("ささやき", "ヒソヒソ"),
-                   "sasayaki": ("ささやき",),
-                   "hisohiso": ("ヒソヒソ",)}
-        wanted = aliases.get(needle)
+    def add_voice(self, sid):
+        if sid not in state["speakers"]:
+            state["speakers"].append(sid)
+            self.render_chosen()
+            self.render_library()
+            save_config()
 
-        self.filtered = []
-        for sid, speaker, style in self.all_voices:
-            label = "%s (%s)" % (speaker, style)
-            if not needle:
-                ok = True
-            elif wanted:
-                ok = any(w in style for w in wanted)
-            else:
-                ok = needle in label.lower() or needle == str(sid)
-            if ok:
-                self.filtered.append((sid, label))
+    def remove_voice(self, sid):
+        if sid in state["speakers"] and len(state["speakers"]) > 1:
+            state["speakers"].remove(sid)
+            self.render_chosen()
+            self.render_library()
+            save_config()
 
-        self.available.delete(0, "end")
-        for sid, label in self.filtered:
-            self.available.insert("end", "  %-4d %s" % (sid, label))
-
-    def refresh_selected(self):
-        self.selected.delete(0, "end")
-        for sid in state["speakers"]:
-            self.selected.insert("end", "  %-4d %s" % (sid, self.label_for(sid)))
-        self.update_urls()
-
-    def add_voice(self):
-        pick = self.available.curselection()
-        if not pick:
-            return
-        sid = self.filtered[pick[0]][0]
-        if sid in state["speakers"]:
-            return
-        state["speakers"].append(sid)
-        self.refresh_selected()
-        save_config()
-
-    def remove_voice(self):
-        pick = self.selected.curselection()
-        if not pick or len(state["speakers"]) <= 1:
-            return
-        del state["speakers"][pick[0]]
-        self.refresh_selected()
-        save_config()
-
-    def move(self, delta):
-        pick = self.selected.curselection()
-        if not pick:
-            return
-        i = pick[0]
-        j = i + delta
-        if not 0 <= j < len(state["speakers"]):
-            return
+    def move(self, index, delta):
+        target = index + delta
         speakers = state["speakers"]
-        speakers[i], speakers[j] = speakers[j], speakers[i]
-        self.refresh_selected()
-        self.selected.selection_set(j)
-        save_config()
+        if 0 <= target < len(speakers):
+            speakers[index], speakers[target] = speakers[target], speakers[index]
+            self.render_chosen()
+            save_config()
 
-    def preview(self):
-        sid = None
-        pick = self.selected.curselection()
-        if pick:
-            sid = state["speakers"][pick[0]]
-        else:
-            pick = self.available.curselection()
-            if pick:
-                sid = self.filtered[pick[0]][0]
-        if sid is None:
-            messagebox.showinfo("Preview", "Pick a voice from either list first.")
-            return
-
+    def preview(self, sid):
         self.read_tuning()
 
         def work():
             try:
-                audio = synthesize(
-                    "こんばんは、ゆっくり "
-                    "やすんでね", sid)
-                ok = play_wav(audio)
-            except Exception as exc:
+                audio = synthesize(PREVIEW_TEXT, sid)
+            except Exception:
                 self.root.after(0, lambda: messagebox.showerror(
-                    "Preview failed",
-                    "Could not reach the VOICEVOX engine.\n\n%s" % exc))
+                    "Can't play that",
+                    "PhiCorvi couldn't reach VOICEVOX.\n\n"
+                    "Make sure the VOICEVOX app is open, then try again."))
                 return
-            if not ok:
+            if not play_wav(audio):
                 self.root.after(0, lambda: messagebox.showinfo(
-                    "No audio player",
-                    "The voice was generated but no audio player was found.\n"
-                    "It still works in Yomitan."))
+                    "No audio player found",
+                    "The voice was created, but this computer has no player "
+                    "PhiCorvi knows how to use.\n\nIt will still work in Yomitan."))
 
         threading.Thread(target=work, daemon=True).start()
 
     # -- run/stop ---------------------------------------------------------
 
-    def read_tuning(self):
+    def autostart(self):
+        if bridge_running():
+            return
         try:
-            state["speed"] = float(self.speed_var.get())
-            state["intonation"] = float(self.intonation_var.get())
-        except ValueError:
-            pass
+            start_bridge()
+        except OSError:
+            return
+        self.render_status()
 
     def toggle_bridge(self):
         if bridge_running():
             stop_bridge()
-            self.start_btn.configure(text="Start")
             state["was_running"] = False
             save_config()
-            self.update_urls()
-            self.refresh_status_colors()
+            self.render_status()
             return
 
         try:
             port = int(self.port_var.get())
         except ValueError:
-            messagebox.showerror("Bad port", "The port has to be a number, e.g. 8772.")
+            messagebox.showerror("Check the port",
+                                 "The port has to be a number, like 8772.")
             return
-
         if port in BLOCKED_PORTS:
             messagebox.showerror(
-                "Port not usable",
-                "Port %d is %s.\n\nYomitan would never be able to reach it. "
-                "Try 8772 instead." % (port, BLOCKED_PORTS[port]))
+                "That port won't work",
+                "Port %d is %s, and browsers refuse to open it.\n\n"
+                "Yomitan would never reach PhiCorvi. Try 8772." % (port, BLOCKED_PORTS[port]))
             return
-        if port in BUSY_PORTS:
-            if not messagebox.askyesno(
-                "Port probably in use",
+        if port in BUSY_PORTS and not messagebox.askyesno(
+                "Port may be taken",
                 "Port %d is normally used by %s.\n\nStart anyway?"
-                    % (port, BUSY_PORTS[port])):
-                return
+                % (port, BUSY_PORTS[port])):
+            return
 
         state["port"] = port
         self.read_tuning()
         try:
             start_bridge()
-        except OSError as exc:
+        except OSError:
             messagebox.showerror(
-                "Could not start",
-                "Port %d is already being used by another program.\n\n%s" % (port, exc))
+                "Port already in use",
+                "Another program is already using port %d.\n\n"
+                "Open Advanced settings and pick a different number, "
+                "like 8773." % port)
             return
-
-        self.start_btn.configure(text="Stop")
         state["was_running"] = True
         save_config()
         self.update_urls()
-        self.refresh_status_colors()
-
-    def update_urls(self):
-        port = state["port"]
-        try:
-            port = int(self.port_var.get())
-        except (ValueError, AttributeError):
-            pass
-        self.yomitan_var.set("http://localhost:%d/?term={term}&reading={reading}" % port)
-        self.manatan_var.set(
-            "http://localtest.me:%d/audio.wav?term={term}&reading={reading}" % port)
+        self.render_status()
 
     def poll_status(self):
         def work():
             alive = engine_alive()
-            self.root.after(0, lambda: self.show_status(alive))
+            self.root.after(0, lambda: self.on_status(alive))
 
         threading.Thread(target=work, daemon=True).start()
         self.root.after(5000, self.poll_status)
 
-    def show_status(self, alive):
-        self._engine_alive = alive
-        self.refresh_status_colors()
-        if not self.all_voices and alive:
+    def on_status(self, alive):
+        was = self.engine_ok
+        self.engine_ok = alive
+        self.render_status()
+        if alive and not self.all_voices:
             self.load_voices_async()
-
-    def refresh_status_colors(self):
-        c = self.colors
-        alive = getattr(self, "_engine_alive", None)
-        if alive is None:
-            self.engine_label.configure(text="checking…", foreground=c["muted"])
-        elif alive:
-            self.engine_label.configure(text="●  connected", foreground=c["ok"])
-        else:
-            self.engine_label.configure(
-                text="○  not running — open the VOICEVOX app first",
-                foreground=c["bad"])
-        if bridge_running():
-            self.bridge_label.configure(
-                text="●  running on port %d" % state["port"], foreground=c["ok"])
-        else:
-            self.bridge_label.configure(text="○  stopped", foreground=c["muted"])
+        elif was is not alive and not alive:
+            self.render_library()
 
     def on_close(self):
         self.read_tuning()
@@ -754,7 +898,7 @@ def load_config():
         if not state["speakers"]:
             state["speakers"] = list(DEFAULTS["speakers"])
         if state["theme"] not in PALETTES:
-            state["theme"] = "light"
+            state["theme"] = "dark"
     except Exception:
         pass
 

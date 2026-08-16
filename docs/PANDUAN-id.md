@@ -1,8 +1,8 @@
-# Panduan PhiCorvi — Suara Jepang Otomatis di Yomitan
+# Panduan PhiCorvi — Suara Jepang Custom di Yomitan
 
-Panduan ini bikin setiap kata yang kamu hover di Yomitan langsung ada suaranya,
-termasuk kata-kata langka yang biasanya sunyi. Kartu Anki hasil mining juga otomatis
-ada audionya.
+Panduan ini bikin setiap kata yang kamu hover di Yomitan punya suara — dan kamu bisa
+pilih suaranya sendiri. Mau yang kawaii, tsundere, ngambek, sampai ASMR, semuanya ada.
+Kartu Anki hasil mining juga otomatis ikut ada audionya.
 
 **Butuh waktu:** sekitar 15 menit, sekali setup doang.
 **Perlu jago komputer?** Nggak. Cuma download, klik, sama copy-paste.
@@ -13,93 +13,77 @@ ada audionya.
 
 | Aplikasi | Gunanya |
 |----------|---------|
-| **VOICEVOX** | Yang bikin suaranya (mesin suaranya) |
-| **PhiCorvi** | Yang menyambungkan VOICEVOX ke Yomitan |
+| **VOICEVOX** | Mesin suaranya — ini yang benar-benar ngomong |
+| **PhiCorvi** | Penyambung VOICEVOX ke Yomitan |
 
-Dua-duanya gratis. Dua-duanya harus **tetap terbuka** selama kamu belajar.
+Dua-duanya gratis, dua-duanya jalan di komputer sendiri (nggak butuh internet), dan
+**dua-duanya harus terbuka** selama kamu belajar.
 
 > **Kenapa harus dua?**
-> VOICEVOX itu yang bisa ngomong, tapi dia nggak ngerti Yomitan. PhiCorvi jadi
-> penerjemah di tengahnya. Tanpa PhiCorvi, Yomitan nggak tahu cara minta suara ke
-> VOICEVOX.
+> VOICEVOX bisa ngomong tapi nggak ngerti Yomitan. PhiCorvi jadi penerjemah di
+> tengahnya. Kalau salah satu ditutup, suaranya hilang.
 
 ---
 
-## Langkah 1 — Download VOICEVOX
+## Langkah 1 — Install VOICEVOX
 
 1. Buka **https://voicevox.hiroshiba.jp**
-2. Klik tombol download, pilih versi Windows
-3. Install seperti aplikasi biasa (klik Next terus sampai selesai)
-4. **Buka aplikasinya, biarkan terbuka**
+2. Download versi Windows, install seperti aplikasi biasa
+3. **Buka aplikasinya, biarkan terbuka**
 
-Pertama kali dibuka agak lama karena dia menyiapkan model suaranya. Sabar aja.
+Pertama kali dibuka agak lama karena menyiapkan model suara. Sabar aja.
 
 ---
 
 ## Langkah 2 — Download PhiCorvi
 
-1. Buka **https://github.com/XnoahR/PhiCorvi/releases**
-2. Di bagian paling atas, cari file **`PhiCorvi.exe`**
-3. Klik untuk download
-4. Pindahkan ke folder yang gampang dicari, misalnya bikin folder `PhiCorvi` di Documents
+1. Buka **https://github.com/XnoahR/PhiCorvi/releases/latest**
+2. Download file **`PhiCorvi.exe`**
+3. Taruh di folder yang gampang dicari, misalnya bikin folder `PhiCorvi` di Documents
 
-> **Windows bilang "Windows protected your PC"?**
-> Ini normal dan bukan virus. Windows selalu curiga sama aplikasi baru yang belum
-> dibeli sertifikatnya (harganya jutaan per tahun).
+> **Muncul "Windows protected your PC"?**
+> Normal, bukan virus. Windows selalu curiga sama aplikasi baru yang belum punya
+> sertifikat berbayar (harganya jutaan per tahun).
 >
 > Klik **More info** → **Run anyway**.
 >
-> Kalau kamu ragu, kode programnya terbuka dan bisa dilihat siapa aja di
+> Kalau ragu, kode programnya terbuka dan bisa diperiksa siapa saja di
 > https://github.com/XnoahR/PhiCorvi
-
-> **Kenapa filenya sekitar 10-15 MB?**
-> Karena Python-nya ikut dibundel di dalam, jadi kamu nggak perlu install Python
-> terpisah. Tinggal klik dua kali, jalan.
 
 ---
 
 ## Langkah 3 — Buka PhiCorvi
 
-Klik dua kali **`PhiCorvi.exe`**.
+Klik dua kali **`PhiCorvi.exe`**. Yang pertama kamu lihat adalah status di bagian atas:
 
-Akan muncul jendela seperti ini:
+| Tulisannya | Artinya |
+|------------|---------|
+| **Ready** (hijau) | Semua beres, tinggal dipakai |
+| **VOICEVOX is not open** (merah) | Aplikasi VOICEVOX belum dibuka |
+| **Paused** (kuning) | Klik tombol **Start** |
 
-```
-┌─ Status ──────────────────────────────────────────┐
-│  VOICEVOX engine   ●  connected          [ Start ]│
-│  Bridge            ●  running on port 8772        │
-└───────────────────────────────────────────────────┘
-```
+Kalau merah, buka aplikasi VOICEVOX dulu, tunggu beberapa detik — nanti berubah
+sendiri jadi **Ready**.
 
-**Cek bagian Status:**
-
-- **VOICEVOX engine: ● connected** (hijau) → bagus, VOICEVOX-nya kebaca
-- **○ not running** (merah) → aplikasi VOICEVOX-nya belum dibuka. Buka dulu, tunggu
-  beberapa detik, nanti berubah sendiri jadi hijau.
-
-**Bridge** biasanya langsung `running` sendiri. Kalau masih `stopped`, klik tombol
-**Start**.
-
-Sudah. Jendela ini biarkan terbuka (boleh di-minimize).
+Kalau sudah **Ready**, jendelanya boleh di-minimize. Jangan ditutup.
 
 ---
 
 ## Langkah 4 — Sambungkan ke Yomitan
 
-1. Di PhiCorvi, klik tombol **Copy** yang di sebelah tulisan **Yomitan**
-2. Buka pengaturan Yomitan (klik ikon Yomitan → **Settings**)
-3. Cari bagian **Audio**
-4. Klik **Configure audio playback sources**
-5. Klik tombol tambah, pilih jenis **Custom URL (JSON)**
-6. Klik kolom URL-nya, tekan **Ctrl+V** (paste)
-7. **Geser sumber ini ke paling atas** di daftar
+1. Di PhiCorvi, klik tombol biru **Copy link**
+2. Buka pengaturan Yomitan → bagian **Audio**
+3. Klik **Configure audio playback sources**
+4. Tambah sumber baru, pilih jenis **Custom URL (JSON)**
+5. Klik kolom URL, tekan **Ctrl+V**
+6. **Geser sumber ini ke paling atas**
 
-Selesai! Coba hover kata Jepang mana aja — harusnya langsung bunyi.
+Selesai. Coba hover kata Jepang — harusnya langsung bunyi.
 
 > **Punya beberapa profil Yomitan?**
-> Pengaturan audio di Yomitan itu **beda-beda tiap profil**. Jadi kalau kamu punya
-> profil "bilingual" dan "monolingual" misalnya, kamu harus tambahkan sumber ini di
-> tiap profil yang kamu pakai. Ini penyebab paling sering "kok nggak bunyi ya".
+> Pengaturan audio di Yomitan itu **beda-beda tiap profil**. Kalau kamu punya profil
+> "bilingual" dan "monolingual", tambahkan sumber ini di tiap profil yang kamu pakai.
+> Ini penyebab paling sering "kok udah dipasang tapi nggak bunyi".
 
 ---
 
@@ -107,78 +91,77 @@ Selesai! Coba hover kata Jepang mana aja — harusnya langsung bunyi.
 
 Nggak ada setting tambahan.
 
-Cek aja di pengaturan Yomitan → **Anki** → di kolom audio kamu sudah ada tulisan:
-
-```
-{audio}
-```
-
-Kalau sudah ada, otomatis kartu yang kamu mining ada suaranya.
+Cek di pengaturan Yomitan → **Anki** → pastikan di kolom audio ada tulisan `{audio}`.
+Kalau sudah, kartu hasil mining otomatis ada suaranya.
 
 > **Saran soal pitch accent**
-> Suara buatan (TTS) itu pitch accent-nya cuma mendekati, nggak selalu akurat. Kalau
-> kamu serius belajar pitch accent, taruh sumber rekaman asli (NHK / Forvo /
+> Suara buatan (TTS) pitch accent-nya cuma mendekati, nggak selalu akurat. Kalau kamu
+> serius belajar pitch accent, taruh sumber rekaman asli (NHK / Forvo /
 > JapanesePod101) **di atas** PhiCorvi.
 >
-> Nanti Yomitan pakai rekaman manusia kalau ada, dan PhiCorvi cuma dipakai buat kata
-> yang nggak ada rekamannya. Jadi kamu tetap dapat dua-duanya: akurat *dan* nggak ada
-> kartu yang sunyi.
+> Yomitan akan pakai rekaman manusia kalau ada, dan PhiCorvi cuma dipakai buat kata
+> yang nggak ada rekamannya. Jadi kamu dapat dua-duanya: akurat *dan* nggak ada kartu
+> yang sunyi.
 >
 > Taruh PhiCorvi paling atas cuma kalau kamu mau semua suaranya seragam satu orang.
 
 ---
 
-## Cara Menambah dan Mengganti Suara
+## Cara Ganti dan Menambah Suara
 
-Ada sekitar **99 suara** di VOICEVOX. Semuanya bisa dipakai.
+Ada **99 suara** di VOICEVOX. Semuanya bisa dipakai.
 
-Di jendela PhiCorvi, bagian **Voices**:
+Jendela PhiCorvi punya dua bagian:
 
-- Kotak **kiri** = semua suara yang tersedia
-- Kotak **kanan** = suara yang dipakai Yomitan (sesuai urutan)
+- **VOICES YOMITAN WILL USE** (atas) — suara yang sedang dipakai, sesuai urutan
+- **ADD A VOICE** (bawah) — semua suara yang tersedia
+
+### Dengar dulu sebelum pilih
+
+Tiap baris punya tombol **▶** di sebelah kiri. Klik tombol itu, suaranya langsung
+diputar. Yang kamu klik, itu yang bunyi — jadi bisa coba-coba sepuasnya dulu.
+
+### Cari pakai grup
+
+Di bawah kolom pencarian ada tombol-tombol grup:
+
+| Grup | Isinya |
+|------|--------|
+| **All** | Semua suara |
+| **ASMR** | Suara berbisik — paling nyaman buat hover ratusan kata |
+| **Female** | Karakter perempuan |
+| **Male** | Karakter laki-laki |
+| **Tomboy** | Suara tomboy |
+| **Sweet** | Manja, imut (あまあま) |
+| **Tsundere** | Judes-judes gimana gitu (ツンツン) |
+| **Sexy** | Dewasa, berat (セクシー) |
+| **Calm** | Tenang, pelan |
+| **Energetic** | Ceria, semangat |
+
+Klik grupnya, daftarnya langsung tersaring. Atau ketik nama karakternya di kolom
+pencarian kalau sudah tahu mau yang mana.
 
 ### Menambah suara
 
-1. Di kotak pencarian kiri, ketik `whisper` (buat cari suara berbisik)
-   atau ketik nama karakternya
-2. Klik suara yang kamu mau
-3. Klik tombol **Preview** dulu buat dengar contohnya
-4. Kalau suka, klik **Add →**
-
-Suaranya langsung pindah ke kotak kanan. Nggak perlu restart apa-apa.
+Klik **+ Add** di baris suara yang kamu mau. Langsung pindah ke daftar atas, nggak
+perlu restart apa-apa.
 
 ### Mengatur urutan
 
-Yomitan pakai suara **paling atas** dulu. Kalau gagal, baru turun ke bawahnya.
+Yomitan pakai suara **nomor 1** dulu. Kalau gagal, baru turun ke nomor 2, dan
+seterusnya.
 
-Klik suara di kotak kanan, lalu:
+Di daftar atas, tiap baris ada tombol:
 
-- **Move up** — naikkan
-- **Move down** — turunkan
-- **← Remove** — hapus dari daftar
-
-### Suara berbisik (paling nyaman buat belajar)
-
-Ini yang paling enak didengar kalau kamu hover ratusan kata semalam:
-
-| Nomor | Nama |
-|-------|------|
-| 19 | 九州そら (ささやき) |
-| 22 | ずんだもん (ささやき) |
-| 36 | 四国めたん (ささやき) |
-| 37 | 四国めたん (ヒソヒソ) |
-| 38 | ずんだもん (ヒソヒソ) |
-| 71 | 満別花丸 (ささやき) |
-| 96 | 中部つるぎ (ヒソヒソ) |
-
-Ketik `whisper` di kotak pencarian, semua ini langsung muncul.
+- **↑ ↓** — naik/turunkan urutannya
+- **✕** — hapus dari daftar
 
 ### Bikin suaranya lebih lembut
 
-Di bagian **Settings**:
+Klik **Advanced settings** di paling bawah:
 
-- **Speed** — kecepatan bicara. Kecilkan jadi `0.90` biar lebih pelan
-- **Intonation** — naik-turun nada. Kecilkan jadi `0.70` biar lebih datar dan kalem
+- **Speed** — kecepatan bicara. Kecilkan ke `0.90` biar lebih pelan
+- **Intonation** — naik-turun nada. Kecilkan ke `0.70` biar lebih datar dan kalem
 
 Semua pengaturan tersimpan otomatis.
 
@@ -186,7 +169,7 @@ Semua pengaturan tersimpan otomatis.
 
 ## Ganti Tema Terang / Gelap
 
-Klik tombol **Dark theme** / **Light theme** di pojok kanan atas. Pilihannya diingat.
+Klik tombol **☾ Dark** / **☀ Light** di pojok kanan atas. Pilihannya diingat.
 
 ---
 
@@ -195,31 +178,26 @@ Klik tombol **Dark theme** / **Light theme** di pojok kanan atas. Pilihannya dii
 Cek berurutan. Hampir selalu penyebabnya nomor 1.
 
 **1. PhiCorvi-nya masih kebuka?**
-Kalau komputer habis restart, kamu harus buka lagi `PhiCorvi.exe`. Dia nggak jalan
-sendiri.
+Habis restart komputer, kamu harus buka lagi `PhiCorvi.exe`. Dia nggak jalan sendiri.
 
-**2. VOICEVOX-nya masih kebuka?**
-Lihat bagian Status di PhiCorvi. Kalau merah, buka aplikasi VOICEVOX.
+**2. Statusnya "Ready"?**
+Kalau merah, buka aplikasi VOICEVOX. Kalau kuning, klik **Start**.
 
-**3. Bridge-nya sudah "running"?**
-Kalau masih `stopped`, klik **Start**.
-
-**4. Profil Yomitan-nya sudah benar?**
+**3. Profil Yomitan-nya sudah benar?**
 Pengaturan audio beda-beda tiap profil.
 
-**5. Sudah digeser ke paling atas?**
-Kalau ada sumber lain di atasnya, sumber itu yang menang duluan.
+**4. Sudah digeser ke paling atas?**
+Kalau ada sumber lain di atasnya, itu yang menang duluan.
 
 > **Yang paling sering kejadian:** habis restart komputer, lupa buka PhiCorvi lagi.
-> Kalau tiba-tiba sunyi, itu tersangka utamanya.
 
-### Kalau muncul error "Port already in use"
+### Muncul "Port already in use"
 
-Berarti ada program lain yang pakai port yang sama. Di bagian **Settings**, ganti
-angka **Port** jadi angka lain, misalnya `8773`, lalu klik **Start** lagi.
+Ada program lain yang pakai nomor yang sama. Klik **Advanced settings**, ganti angka
+**Port** jadi `8773`, lalu klik **Start** lagi.
 
-Jangan pakai `5060` atau `5061` — browser menolak dua port itu, jadi Yomitan nggak
-akan bisa nyambung. PhiCorvi akan kasih peringatan kalau kamu salah pilih.
+Jangan pakai `5060` atau `5061` — browser menolak dua nomor itu, jadi Yomitan nggak
+akan bisa nyambung. PhiCorvi akan memperingatkan kalau kamu salah pilih.
 
 ---
 
@@ -227,31 +205,30 @@ akan bisa nyambung. PhiCorvi akan kasih peringatan kalau kamu salah pilih.
 
 Bisa juga, tapi ada dua catatan.
 
-Klik tombol **Copy** yang di sebelah **Manatan** (bukan yang Yomitan — alamatnya
-beda). Paste ke Manatan → Audio Sources → **Custom Word Audio URL**.
+Klik tombol **for Manatan** (bukan yang biru — alamatnya beda). Paste ke Manatan →
+Audio Sources → **Custom Word Audio URL**.
 
-Tapi di Manatan urutan sumber suaranya **nggak bisa diubah**. Dia selalu coba
-JapanesePod101 duluan, jadi PhiCorvi nggak akan kepakai otomatis. Kamu bisa klik kanan
-tombol speaker terus pilih Custom URL, tapi pilihannya balik lagi tiap ganti kata.
+Tapi di Manatan urutan sumber suara **nggak bisa diubah**. Dia selalu coba
+JapanesePod101 duluan, jadi PhiCorvi nggak kepakai otomatis. Bisa klik kanan tombol
+speaker lalu pilih Custom URL, tapi pilihannya balik lagi tiap ganti kata.
 
-Jadi kalau mau yang otomatis, pakai Yomitan.
+Kalau mau otomatis, pakai Yomitan.
 
 ---
 
-## Catatan Soal Hak Pakai Suara
+## Catatan Hak Pakai Suara
 
-Suara VOICEVOX gratis dipakai, tapi tiap karakter punya aturannya sendiri. Untuk
-belajar pribadi dan kartu Anki, bebas.
+Suara VOICEVOX gratis dipakai, tapi tiap karakter punya aturan sendiri. Untuk belajar
+pribadi dan kartu Anki, bebas.
 
-Kalau kamu mau **upload audionya** (misalnya ke YouTube atau TikTok), biasanya wajib
-mencantumkan nama karakternya. Cek aturan lengkapnya di
-https://voicevox.hiroshiba.jp/term/
+Kalau mau **upload audionya** (YouTube, TikTok, dll), biasanya wajib mencantumkan nama
+karakternya. Aturan lengkapnya: https://voicevox.hiroshiba.jp/term/
 
 ---
 
 ## Buat Pengguna Mac dan Linux
 
-Belum ada file `.exe` buat Mac/Linux, tapi bisa jalan langsung dari kode:
+Belum ada `.exe`, tapi bisa jalan langsung dari kode:
 
 1. Install Python 3 dari https://python.org
 2. Download `phicorvi.py` dari https://github.com/XnoahR/PhiCorvi

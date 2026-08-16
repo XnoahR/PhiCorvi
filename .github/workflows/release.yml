@@ -33,6 +33,21 @@ jobs:
           $size = (Get-Item dist/PhiCorvi.exe).Length / 1MB
           Write-Host ("built PhiCorvi.exe: {0:N1} MB" -f $size)
 
+      - name: Smoke test - does it actually stay open?
+        shell: pwsh
+        # Building successfully proves nothing: a missing import crashes at run
+        # time, and --noconsole swallows the traceback, so a broken build looks
+        # identical to a working one on the way out. Launch it and confirm it
+        # survives. This exact bug shipped in v1.0.0.
+        run: |
+          $p = Start-Process -FilePath dist/PhiCorvi.exe -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) {
+            throw "PhiCorvi.exe exited on its own (code $($p.ExitCode)) - it crashed at startup"
+          }
+          Stop-Process -Id $p.Id -Force
+          Write-Host "app stayed running - no startup crash"
+
       - uses: actions/upload-artifact@v4
         with:
           name: PhiCorvi-windows

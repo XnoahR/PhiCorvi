@@ -289,35 +289,36 @@ class ScrollList(ttk.Frame):
 
         self.body.bind("<Configure>", self._on_body)
         self.canvas.bind("<Configure>", self._on_canvas)
-        for target in (self.canvas, self.body):
-            target.bind("<Enter>", lambda e: self._wheel(True))
-            target.bind("<Leave>", lambda e: self._wheel(False))
+        # Tagged so the app can find which scroller the pointer is over. Binding
+        # the wheel per-widget here would fight the page's own scrolling.
+        self.canvas._scroller = self
+        self.body._scroller = self
 
     def _on_body(self, _):
-        box = self.canvas.bbox("all")
-        self.canvas.configure(scrollregion=box)
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self._sync_scrollbar()
+
+    def _on_canvas(self, event):
+        self.canvas.itemconfigure(self.window, width=event.width)
+        # Shrinking the window changes what fits without changing the content,
+        # so the scrollbar has to be re-checked here as well as on <Configure>
+        # of the body -- otherwise it never appears when you resize down.
+        self._sync_scrollbar()
+
+    def _sync_scrollbar(self):
         # Only show the scrollbar when there is something to scroll to -- a dead
         # scrollbar next to two rows reads as "something is cut off".
-        needed = bool(box) and box[3] > self.canvas.winfo_height()
+        needed = self.can_scroll()
         if needed and not self.sb.winfo_ismapped():
             self.sb.pack(side="right", fill="y")
         elif not needed and self.sb.winfo_ismapped():
             self.sb.pack_forget()
 
-    def _on_canvas(self, event):
-        self.canvas.itemconfigure(self.window, width=event.width)
+    def can_scroll(self):
+        box = self.canvas.bbox("all")
+        return bool(box) and box[3] > self.canvas.winfo_height() + 2
 
-    def _wheel(self, on):
-        if on:
-            self.canvas.bind_all("<MouseWheel>", self._scroll)
-            self.canvas.bind_all("<Button-4>", self._scroll)
-            self.canvas.bind_all("<Button-5>", self._scroll)
-        else:
-            self.canvas.unbind_all("<MouseWheel>")
-            self.canvas.unbind_all("<Button-4>")
-            self.canvas.unbind_all("<Button-5>")
-
-    def _scroll(self, event):
+    def scroll(self, event):
         if getattr(event, "num", None) == 4:
             step = -1
         elif getattr(event, "num", None) == 5:
@@ -340,8 +341,11 @@ class App:
     def __init__(self, root):
         self.root = root
         root.title("PhiCorvi")
-        root.minsize(660, 760)
-        root.geometry("700x840")
+        # Small enough to fit a short screen; the page scrolls, so nothing is
+        # ever unreachable no matter how far it is squashed.
+        root.minsize(520, 380)
+        tall = min(880, root.winfo_screenheight() - 140)
+        root.geometry("700x%d" % max(420, tall))
 
         self.all_voices = []
         self.engine_ok = None
@@ -353,9 +357,14 @@ class App:
         self.style = ttk.Style()
         self.style.theme_use("clam")
 
-        self.outer = ttk.Frame(root, padding=16)
+        self.page = ScrollList(root, height=600)
+        self.page.pack(fill="both", expand=True)
+        self.outer = ttk.Frame(self.page.body, padding=16)
         self.outer.pack(fill="both", expand=True)
         self.outer.columnconfigure(0, weight=1)
+
+        for seq in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            root.bind_all(seq, self.on_wheel)
 
         self._build_header()
         self._build_chosen()
@@ -468,6 +477,7 @@ class App:
         for widget in (self.header, self.chosen_card, self.library_card,
                        self.connect_card):
             widget.configure(style="Card.TFrame")
+        self.page.paint(c["bg"])
         self.chosen_list.paint(c["surface"])
         self.library_list.paint(c["surface"])
 
@@ -476,6 +486,20 @@ class App:
         self.render_status()
         self.render_chosen()
         self.render_library()
+
+    def on_wheel(self, event):
+        widget = self.root.winfo_containing(event.x_root, event.y_root)
+        while widget is not None:
+            scroller = getattr(widget, "_scroller", None)
+            # Skip a list that has nothing to scroll, so the wheel keeps working
+            # over a short list instead of dying there.
+            if scroller is not None and scroller.can_scroll():
+                scroller.scroll(event)
+                return "break"
+            widget = getattr(widget, "master", None)
+        if self.page.can_scroll():
+            self.page.scroll(event)
+        return "break"
 
     def toggle_theme(self):
         state["theme"] = "light" if state["theme"] == "dark" else "dark"
@@ -640,8 +664,7 @@ class App:
             self.chips[name] = btn
 
         card = ttk.Frame(self.outer, style="Card.TFrame", padding=(4, 8))
-        card.grid(row=4, column=0, sticky="nsew", pady=(8, 0))
-        self.outer.rowconfigure(4, weight=1)
+        card.grid(row=4, column=0, sticky="ew", pady=(8, 0))
         self.library_card = card
         self.library_list = ScrollList(card, height=190)
         self.library_list.pack(fill="both", expand=True)

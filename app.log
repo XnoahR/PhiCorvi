@@ -1,0 +1,540 @@
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1967, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "/media/raychi/RayDrive/Programming/Open Source/PhiCorvi/phicorvi.py", line 485, in on_wheel
+    widget = self.root.winfo_containing(event.x_root, event.y_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1130, in winfo_containing
+    return self._nametowidget(name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/tkinter/__init__.py", line 1582, in nametowidget
+    w = w.children[n]
+        ~~~~~~~~~~^^^
+KeyError: 'popdown'

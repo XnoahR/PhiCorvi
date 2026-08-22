@@ -22,7 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 # Packaged as a one-file .exe, __file__ points into a temporary extraction folder
 # that is deleted on exit -- settings saved there would vanish every run. Sit next
@@ -401,6 +401,22 @@ class App:
                     font=("TkDefaultFont", 9, "bold"))
         s.configure("Section.TLabel", background=c["bg"], foreground=c["muted"],
                     font=("TkDefaultFont", 9, "bold"))
+        s.configure("Quiet.TLabel", background=c["bg"], foreground=c["faint"])
+
+        s.configure("TCombobox", fieldbackground=c["field"], background=c["raised"],
+                    foreground=c["ink"], arrowcolor=c["accent"],
+                    bordercolor=c["border"], lightcolor=c["border"],
+                    darkcolor=c["border"], selectbackground=c["field"],
+                    selectforeground=c["ink"], padding=5)
+        s.map("TCombobox", fieldbackground=[("readonly", c["field"])],
+              foreground=[("readonly", c["ink"])],
+              selectbackground=[("readonly", c["field"])],
+              selectforeground=[("readonly", c["ink"])])
+        # The dropdown is a plain Tk listbox and ignores ttk styling entirely.
+        self.root.option_add("*TCombobox*Listbox.background", c["surface"])
+        self.root.option_add("*TCombobox*Listbox.foreground", c["ink"])
+        self.root.option_add("*TCombobox*Listbox.selectBackground", c["accent"])
+        self.root.option_add("*TCombobox*Listbox.selectForeground", c["accent_ink"])
         s.configure("Big.TLabel", background=c["surface"], foreground=c["ink"],
                     font=("TkDefaultFont", 14, "bold"))
 
@@ -541,9 +557,13 @@ class App:
     # -- chosen voices ----------------------------------------------------
 
     def _build_chosen(self):
-        ttk.Label(self.outer, text="VOICES YOMITAN WILL USE",
-                  style="Section.TLabel").grid(row=1, column=0, sticky="w",
-                                               pady=(18, 6))
+        hdr = ttk.Frame(self.outer)
+        hdr.grid(row=1, column=0, sticky="ew", pady=(18, 6))
+        hdr.columnconfigure(0, weight=1)
+        ttk.Label(hdr, text="VOICES YOMITAN WILL USE",
+                  style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Button(hdr, text="Speak any text\u2026", style="Link.TButton",
+                   command=self.open_speak_window).grid(row=0, column=1, sticky="e")
         card = ttk.Frame(self.outer, style="Card.TFrame", padding=(4, 8))
         card.grid(row=2, column=0, sticky="ew")
         self.chosen_card = card
@@ -698,6 +718,154 @@ class App:
             ttk.Label(self.library_list.body,
                       text="Nothing matches that. Try a shorter word.",
                       style="CardFaint.TLabel", padding=14).pack(anchor="w")
+
+    # -- speak any text ---------------------------------------------------
+
+    def open_speak_window(self):
+        if getattr(self, "_speak", None) is not None and self._speak.winfo_exists():
+            self._speak.lift()
+            return
+        if not self.all_voices:
+            messagebox.showinfo("No voices yet",
+                                "Open the VOICEVOX app first, then try again.")
+            return
+
+        c = self.c
+        win = tk.Toplevel(self.root)
+        self._speak = win
+        win.title("Speak any text")
+        win.configure(bg=c["bg"])
+        win.geometry("560x380")
+        win.minsize(460, 340)
+
+        wrap = ttk.Frame(win, padding=14)
+        wrap.pack(fill="both", expand=True)
+        wrap.columnconfigure(0, weight=1)
+        wrap.rowconfigure(1, weight=1)
+
+        ttk.Label(wrap, text="PASTE JAPANESE TEXT",
+                  style="Section.TLabel").grid(row=0, column=0, sticky="w")
+
+        box = tk.Text(wrap, height=7, wrap="word", bd=0, relief="flat",
+                      bg=c["field"], fg=c["ink"], insertbackground=c["ink"],
+                      highlightthickness=1, highlightbackground=c["border"],
+                      highlightcolor=c["accent"], padx=10, pady=8)
+        box.grid(row=1, column=0, sticky="nsew", pady=(6, 6))
+        box.focus_set()
+
+        info = ttk.Label(wrap, text="", style="Quiet.TLabel")
+        info.grid(row=2, column=0, sticky="w")
+
+        bar = ttk.Frame(wrap)
+        bar.grid(row=3, column=0, sticky="ew", pady=(12, 0))
+        bar.columnconfigure(1, weight=1)
+
+        labels, by_label = [], {}
+        for sid, speaker, style in self.all_voices:
+            label = "%s (%s)" % (speaker, style)
+            labels.append(label)
+            by_label[label] = sid
+        start = _names.get(state["speakers"][0], labels[0])
+        voice = tk.StringVar(value=start if start in by_label else labels[0])
+
+        ttk.Label(bar, text="Voice").grid(row=0, column=0, padx=(0, 8))
+        combo = ttk.Combobox(bar, textvariable=voice, values=labels,
+                             state="readonly", width=24)
+        combo.grid(row=0, column=1, sticky="w")
+
+        play = ttk.Button(bar, text="\u25b6  Play", style="Accent.TButton")
+        play.grid(row=0, column=2, padx=(8, 0))
+        save = ttk.Button(bar, text="Save\u2026")
+        save.grid(row=0, column=3, padx=(6, 0))
+
+        def written():
+            return box.get("1.0", "end-1c").strip()
+
+        def refresh(*_):
+            n = len(written())
+            if not n:
+                info.configure(text="")
+            else:
+                # Measured on a mid-range CPU: about nine characters a second.
+                info.configure(text="%d characters  \u00b7  around %d seconds to make"
+                                    % (n, max(1, round(n / 9.0))))
+
+        box.bind("<KeyRelease>", refresh)
+        box.bind("<<Paste>>", lambda e: box.after(30, refresh))
+
+        def busy(on, label="\u25b6  Play"):
+            for btn in (play, save):
+                btn.state(["disabled"] if on else ["!disabled"])
+            play.configure(text="Making\u2026" if on else label)
+
+        def generate(then):
+            body = written()
+            if not body:
+                messagebox.showinfo("Nothing to say",
+                                    "Paste some Japanese text first.", parent=win)
+                return
+            busy(True)
+
+            def work():
+                try:
+                    audio = synthesize(body, by_label[voice.get()])
+                except Exception:
+                    self.root.after(0, lambda: (busy(False), messagebox.showerror(
+                        "Could not make audio",
+                        "PhiCorvi couldn't reach VOICEVOX.\n\n"
+                        "Make sure the VOICEVOX app is open.", parent=win)))
+                    return
+                self.root.after(0, lambda: (busy(False), then(audio)))
+
+            threading.Thread(target=work, daemon=True).start()
+
+        def do_play():
+            generate(lambda audio: play_wav(audio) or None)
+
+        def do_save():
+            def store(audio):
+                types = [("WAV audio", "*.wav")]
+                ext = ".wav"
+                if shutil.which("ffmpeg"):
+                    types.insert(0, ("MP3 audio", "*.mp3"))
+                    ext = ".mp3"
+                path = filedialog.asksaveasfilename(
+                    parent=win, defaultextension=ext, filetypes=types,
+                    initialfile="phicorvi" + ext)
+                if not path:
+                    return
+                try:
+                    if path.lower().endswith(".mp3"):
+                        proc = subprocess.run(
+                            ["ffmpeg", "-y", "-f", "wav", "-i", "pipe:0",
+                             "-b:a", "64k", "-ac", "1", path],
+                            input=audio, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL)
+                        if proc.returncode != 0:
+                            raise OSError("ffmpeg failed")
+                    else:
+                        with open(path, "wb") as fh:
+                            fh.write(audio)
+                except Exception as exc:
+                    messagebox.showerror("Could not save",
+                                         "%s" % exc, parent=win)
+                    return
+                info.configure(text="Saved to %s" % os.path.basename(path))
+
+            generate(store)
+
+        play.configure(command=do_play)
+        save.configure(command=do_save)
+
+        hint = "Long passages take a while \u2014 roughly a second for every nine characters."
+        if not shutil.which("ffmpeg"):
+            hint += "  Install ffmpeg to save as MP3 instead of large WAV files."
+        ttk.Label(wrap, text=hint, style="Quiet.TLabel",
+                  wraplength=500, justify="left").grid(row=4, column=0, sticky="w",
+                                                       pady=(10, 0))
+
+        win.protocol("WM_DELETE_WINDOW",
+                     lambda: (setattr(self, "_speak", None), win.destroy()))
 
     # -- connect ----------------------------------------------------------
 

@@ -17,6 +17,7 @@ talk to it directly. Point Yomitan at PhiCorvi and it just works.
 - Works offline, no rate limits, no missing entries
 - Mined Anki cards stop having silent audio fields
 - One window: start, stop, pick voices, preview, copy the URL
+- Reads whole sentences and paragraphs too, not just single words
 
 *Named after φ Corvi, a star in Corvus — the crow. Crows imitate human speech, which is
 more or less the job.*
@@ -66,6 +67,7 @@ configure.
 | **Voices** | Filter by group (ASMR, Female, Male, Tomboy, Sweet, Tsundere, Sexy, Calm, Energetic) or search by name. Add as many as you like and set their order. |
 | **Preview** | Every row has its own ▶ button, so you always hear the voice you clicked. |
 | **Copy** | Ready-to-paste URLs for Yomitan and Manatan. |
+| **Speak any text** | Paste a sentence or a whole paragraph, hear it, and save it as a file. |
 | **Settings** | Port, speed, intonation. Lower intonation = flatter, calmer. |
 | **Theme** | Light and dark, both blue. |
 

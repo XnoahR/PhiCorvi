@@ -17,3 +17,4 @@ Mengisi banyak kartu sekaligus: **Tools → PhiCorvi: isi audio kalimat kosong�
 Untuk kartu tertentu saja: pilih di Browse, lalu menu **Notes**.
 
 - **auto_limit** — berapa kartu paling banyak diisi sekali sapuan otomatis. Sisanya disusul sapuan berikutnya.
+- **check_updates** — cek sekali sehari apakah ada versi baru di GitHub. Matikan kalau tidak mau add-on menghubungi internet sama sekali.

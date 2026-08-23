@@ -5,6 +5,7 @@
   "auto": true,
   "max_chars": 200,
   "auto_limit": 25,
+  "check_updates": true,
   "tag": "phicorvi-tts",
   "targets": [
     {

@@ -217,6 +217,20 @@ the next lookup. For automatic playback, use Yomitan.
 
 ---
 
+## Update checks
+
+Both the app and the add-on ask GitHub once whether a newer release exists --
+the app at startup, the add-on once a day -- and say nothing unless there is
+one. Nothing else is sent: no identifier, no usage, no collection contents.
+
+The question goes to `/releases/latest`, which answers with a redirect, rather
+than to GitHub's API: the API allows 60 unauthenticated calls an hour counted
+per IP address, so on a shared address the budget is often already spent by
+strangers.
+
+To switch it off, set `check_updates` to `false` -- in `phicorvi_config.json`
+for the app, or in the add-on's config for the add-on.
+
 ## Licence
 
 MIT. VOICEVOX itself has its own terms — each voice has its own rules about

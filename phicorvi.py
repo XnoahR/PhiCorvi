@@ -22,6 +22,7 @@ import tkinter as tk
 import urllib.error
 import urllib.parse
 import urllib.request
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from tkinter import filedialog, messagebox, ttk
 
@@ -34,6 +35,10 @@ else:
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(APP_DIR, "phicorvi_config.json")
 
+VERSION = "1.3.0"
+REPO = "XnoahR/PhiCorvi"
+RELEASES = "https://github.com/%s/releases/latest" % REPO
+
 DEFAULTS = {
     "engine": "http://127.0.0.1:50021",
     "port": 8772,
@@ -42,6 +47,7 @@ DEFAULTS = {
     "intonation": 0.9,
     "theme": "dark",
     "was_running": True,
+    "check_updates": True,
     "watch_clipboard": False,
     "clipboard_max_chars": 200,
 }
@@ -174,6 +180,38 @@ def synthesize(text, speaker):
         _cache.clear()
     _cache[key] = audio
     return audio
+
+
+def latest_release():
+    """Which release is newest, without touching GitHub's API.
+
+    /releases/latest is a redirect to /releases/tag/<tag>, so a HEAD request
+    lands on the answer with no body to download. The API is the obvious route
+    and the wrong one: it allows 60 unauthenticated calls an hour counted per
+    IP address, and behind a shared one -- a phone network, a campus, a CDN --
+    that budget is routinely spent by strangers before the app ever asks. The
+    redirect carries no such limit.
+    """
+    try:
+        req = urllib.request.Request(RELEASES, method="HEAD",
+                                     headers={"User-Agent": "PhiCorvi/%s" % VERSION})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            final = resp.geturl()
+    except Exception:
+        return None
+    found = re.search(r"/tag/v?([0-9]+(?:\.[0-9]+)*)", final or "")
+    return found.group(1) if found else None
+
+
+def newer(candidate, current):
+    """Compare dotted versions numerically. "1.10.0" beats "1.9.0", which string
+    comparison gets backwards."""
+    try:
+        a = [int(x) for x in candidate.split(".")]
+        b = [int(x) for x in current.split(".")]
+    except (AttributeError, ValueError):
+        return False
+    return a > b
 
 
 def to_mp3(wav):
@@ -391,7 +429,7 @@ class ScrollList(ttk.Frame):
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("PhiCorvi")
+        root.title("PhiCorvi %s" % VERSION)
         # Small enough to fit a short screen; the page scrolls, so nothing is
         # ever unreachable no matter how far it is squashed.
         root.minsize(520, 380)
@@ -432,6 +470,7 @@ class App:
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.poll_status()
         self.poll_clipboard()
+        self.check_update()
         self.load_voices_async()
         if state.get("was_running"):
             self.root.after(400, self.autostart)
@@ -600,6 +639,13 @@ class App:
                                    wraplength=380)
         self.clip_note.pack(anchor="w")
 
+        # Stays empty unless there is genuinely something newer, so it never
+        # becomes a strip of chrome people learn to look past.
+        self.update_note = ttk.Label(left, text="", style="CardFaint.TLabel",
+                                     cursor="hand2", wraplength=380, justify="left")
+        self.update_note.pack(anchor="w", pady=(10, 0))
+        self.update_note.bind("<Button-1>", lambda _e: webbrowser.open(RELEASES))
+
         right = ttk.Frame(card, style="Card.TFrame")
         right.grid(row=0, column=1, sticky="e")
         self.power_btn = ttk.Button(right, text="Stop", width=11,
@@ -608,6 +654,28 @@ class App:
         self.theme_btn = ttk.Button(right, text="☾  Dark", width=11,
                                     style="Link.TButton", command=self.toggle_theme)
         self.theme_btn.pack(pady=(8, 0))
+
+    def check_update(self):
+        """One request at startup, off the UI thread, and silent about every
+        outcome except an update actually being available."""
+        if not state.get("check_updates", True):
+            return
+
+        def work():
+            found = latest_release()
+            if not found or not newer(found, VERSION):
+                return
+            try:
+                self.root.after(0, lambda: self.show_update(found))
+            except Exception:
+                pass  # window closed while we were asking
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def show_update(self, found):
+        self.update_note.configure(
+            text="Versi %s sudah keluar — kamu pakai %s. Klik di sini untuk unduh."
+            % (found, VERSION))
 
     def on_clip_toggle(self):
         state["watch_clipboard"] = bool(self.clip_var.get())

@@ -29,6 +29,9 @@ from aqt.qt import QAction
 from aqt.utils import askUser, showInfo, showWarning, tooltip
 
 ADDON = __name__.split(".")[0]
+VERSION = "1.3.0"
+REPO = "XnoahR/PhiCorvi"
+RELEASES = "https://github.com/%s/releases/latest" % REPO
 LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_files", "phicorvi.log")
 
 
@@ -51,6 +54,7 @@ DEFAULTS = {
     "auto": True,
     "max_chars": 200,
     "auto_limit": 25,
+    "check_updates": True,
     "tag": "phicorvi-tts",
     "targets": [],
 }
@@ -368,10 +372,63 @@ def on_browser_menus(browser):
     browser.form.menu_Notes.addAction(act)
 
 
+def check_update():
+    """Anki updates add-ons it installed from AnkiWeb; this one arrives as a
+    file, so nobody would ever hear about a new version without opening GitHub
+    to look. Once a day, in the background, and silent unless there is news.
+
+    The version comes from the /releases/latest redirect rather than the API,
+    whose 60-an-hour unauthenticated budget is counted per IP and is routinely
+    already spent by strangers on a shared address.
+    """
+    if not conf().get("check_updates", True):
+        return
+    stamp = os.path.join(os.path.dirname(LOG), "lastcheck")
+    try:
+        if time.time() - os.path.getmtime(stamp) < 86400:
+            return
+    except OSError:
+        pass
+
+    def work():
+        try:
+            req = urllib.request.Request(
+                RELEASES, method="HEAD",
+                headers={"User-Agent": "PhiCorviSentenceAudio/%s" % VERSION})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                final = resp.geturl()
+        except Exception:
+            return None
+        os.makedirs(os.path.dirname(stamp), exist_ok=True)
+        open(stamp, "w").close()
+        found = re.search(r"/tag/v?([0-9]+(?:\.[0-9]+)*)", final or "")
+        return found.group(1) if found else None
+
+    def done(fut):
+        try:
+            found = fut.result()
+        except Exception:
+            return
+        if not found:
+            return
+        try:
+            new = [int(x) for x in found.split(".")]
+            cur = [int(x) for x in VERSION.split(".")]
+        except ValueError:
+            return
+        if new > cur:
+            log("versi %s tersedia (terpasang %s)" % (found, VERSION))
+            tooltip("PhiCorvi Sentence Audio %s sudah keluar "
+                    "(kamu pakai %s) - Tools > PhiCorvi" % (found, VERSION), period=8000)
+
+    mw.taskman.run_in_background(work, done)
+
+
 def setup():
     act = QAction("PhiCorvi: isi audio kalimat kosong…", mw)
     act.triggered.connect(lambda _=False: run_bulk(None))
     mw.form.menuTools.addAction(act)
+    mw.progress.single_shot(8000, check_update, True)
 
 
 log("--- add-on dimuat ---")

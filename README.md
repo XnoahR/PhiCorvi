@@ -18,6 +18,7 @@ talk to it directly. Point Yomitan at PhiCorvi and it just works.
 - Mined Anki cards stop having silent audio fields
 - One window: start, stop, pick voices, preview, copy the URL
 - Reads whole sentences and paragraphs too, not just single words
+- Optional clipboard watch: copy a line from a novel and hear it, no window switching
 
 *Named after φ Corvi, a star in Corvus — the crow. Crows imitate human speech, which is
 more or less the job.*
@@ -68,6 +69,7 @@ configure.
 | **Preview** | Every row has its own ▶ button, so you always hear the voice you clicked. |
 | **Copy** | Ready-to-paste URLs for Yomitan and Manatan. |
 | **Speak any text** | Paste a sentence or a whole paragraph, hear it, and save it as a file. |
+| **Read what I copy** | Tick it, then just select a sentence and press Ctrl+C while you read. Japanese text is spoken; URLs, code and anything too long are ignored. |
 | **Settings** | Port, speed, intonation. Lower intonation = flatter, calmer. |
 | **Theme** | Light and dark, both blue. |
 

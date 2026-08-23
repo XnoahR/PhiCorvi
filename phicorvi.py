@@ -12,6 +12,7 @@ Run it with:  python3 phicorvi.py
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -41,7 +42,13 @@ DEFAULTS = {
     "intonation": 0.9,
     "theme": "dark",
     "was_running": True,
+    "watch_clipboard": False,
+    "clipboard_max_chars": 200,
 }
+
+# Only speak things that actually look Japanese. Without this the watcher reads
+# out every URL, file path and snippet of code you copy.
+JAPANESE = re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]")
 
 # Ports Chromium refuses to open (ERR_UNSAFE_PORT), plus ones commonly taken by
 # other Japanese-mining tools. Warn rather than let people debug silent audio.
@@ -349,6 +356,7 @@ class App:
 
         self.all_voices = []
         self.engine_ok = None
+        self._last_clip = ""
         self._filter_job = None
         self.advanced_open = False
         self.group = "All"
@@ -379,6 +387,7 @@ class App:
 
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.poll_status()
+        self.poll_clipboard()
         self.load_voices_async()
         if state.get("was_running"):
             self.root.after(400, self.autostart)
@@ -453,6 +462,13 @@ class App:
                     relief="flat", padding=(2, 2))
         s.map("Link.TButton", background=[("active", c["bg"])],
               foreground=[("active", c["accent"])])
+
+        s.configure("Card.TCheckbutton", background=c["surface"], foreground=c["muted"],
+                    focuscolor=c["accent"])
+        s.map("Card.TCheckbutton",
+              background=[("active", c["surface"])],
+              foreground=[("active", c["ink"])],
+              indicatorcolor=[("selected", c["accent"]), ("!selected", c["field"])])
 
         s.configure("Chip.TButton", background=c["surface"], foreground=c["muted"],
                     relief="flat", padding=(11, 5), font=("TkDefaultFont", 9))
@@ -531,6 +547,15 @@ class App:
         self.bridge_dot = ttk.Label(dots, text="● PhiCorvi", style="CardFaint.TLabel")
         self.bridge_dot.pack(side="left", padx=(16, 0))
 
+        self.clip_var = tk.BooleanVar(value=bool(state.get("watch_clipboard", False)))
+        clip = ttk.Checkbutton(left, text="Bacakan teks Jepang yang saya salin",
+                               variable=self.clip_var, style="Card.TCheckbutton",
+                               command=self.on_clip_toggle)
+        clip.pack(anchor="w", pady=(10, 0))
+        self.clip_note = ttk.Label(left, text="", style="CardFaint.TLabel",
+                                   wraplength=380)
+        self.clip_note.pack(anchor="w")
+
         right = ttk.Frame(card, style="Card.TFrame")
         right.grid(row=0, column=1, sticky="e")
         self.power_btn = ttk.Button(right, text="Stop", width=11,
@@ -539,6 +564,19 @@ class App:
         self.theme_btn = ttk.Button(right, text="☾  Dark", width=11,
                                     style="Link.TButton", command=self.toggle_theme)
         self.theme_btn.pack(pady=(8, 0))
+
+    def on_clip_toggle(self):
+        state["watch_clipboard"] = bool(self.clip_var.get())
+        save_config()
+        if state["watch_clipboard"]:
+            # whatever is already on the clipboard should not fire immediately
+            try:
+                self._last_clip = self.root.clipboard_get()
+            except Exception:
+                self._last_clip = ""
+            self.clip_note.configure(text="Blok kalimat lalu Ctrl+C.")
+        else:
+            self.clip_note.configure(text="")
 
     def render_status(self):
         c = self.c
@@ -1090,6 +1128,44 @@ class App:
         self.update_urls()
         self.render_status()
 
+    # -- read what you copy -----------------------------------------------
+
+    def poll_clipboard(self):
+        """Speak Japanese text as soon as it lands on the clipboard, so reading
+        a novel means select + copy instead of select, copy, switch window,
+        paste, click."""
+        self.root.after(400, self.poll_clipboard)
+        if not self.clip_var.get():
+            return
+        try:
+            text = self.root.clipboard_get()
+        except Exception:
+            return                      # empty, or not text at all
+        text = (text or "").strip()
+        if not text or text == self._last_clip:
+            return
+        self._last_clip = text
+
+        if not JAPANESE.search(text):
+            return
+        limit = int(conf_int("clipboard_max_chars", 200))
+        if len(text) > limit:
+            self.clip_note.configure(
+                text="dilewati: %d karakter, batas %d" % (len(text), limit))
+            return
+
+        sid = state["speakers"][0] if state["speakers"] else 19
+        self.clip_note.configure(text="membacakan: %s" % text[:28])
+
+        def work():
+            try:
+                play_wav(synthesize(text, sid))
+            except Exception:
+                self.root.after(0, lambda: self.clip_note.configure(
+                    text="gagal - VOICEVOX terbuka?"))
+
+        threading.Thread(target=work, daemon=True).start()
+
     def poll_status(self):
         def work():
             alive = engine_alive()
@@ -1115,6 +1191,13 @@ class App:
 
 
 # ---------------------------------------------------------------------- config
+
+def conf_int(key, fallback):
+    try:
+        return int(state.get(key, fallback))
+    except (TypeError, ValueError):
+        return fallback
+
 
 def load_config():
     try:

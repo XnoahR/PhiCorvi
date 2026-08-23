@@ -9,6 +9,9 @@ Butuh aplikasi **PhiCorvi** hidup (dan VOICEVOX di dalamnya) waktu mengisi audio
 - **max_chars** — kalimat lebih panjang dari ini dilewati.
 - **tag** — tag yang ditempel supaya audio TTS bisa dibedakan dari rekaman asli.
 - **targets** — pasangan note type + nama field. Tambah sendiri kalau note type kamu lain.
+  `sentence` boleh diisi daftar: dicoba berurutan, yang pertama ada isinya dipakai.
+  Berguna kalau `{sentence}` Yomitan kamu matikan tapi versi furiganya tetap terisi —
+  ruby-nya dibuang, jadi yang dibacakan tetap kalimat biasa.
 
 Mengisi banyak kartu sekaligus: **Tools → PhiCorvi: isi audio kalimat kosong…**
 Untuk kartu tertentu saja: pilih di Browse, lalu menu **Notes**.

@@ -9,22 +9,34 @@
   "targets": [
     {
       "notetype": "Kiku",
-      "sentence": "Sentence",
+      "sentence": [
+        "Sentence",
+        "SentenceFurigana"
+      ],
       "audio": "SentenceAudio"
     },
     {
       "notetype": "Lapis (Jiten)",
-      "sentence": "Sentence",
+      "sentence": [
+        "Sentence",
+        "SentenceFurigana"
+      ],
       "audio": "SentenceAudio"
     },
     {
       "notetype": "Lapis",
-      "sentence": "Sentence",
+      "sentence": [
+        "Sentence",
+        "SentenceFurigana"
+      ],
       "audio": "SentenceAudio"
     },
     {
       "notetype": "JP Mining Note",
-      "sentence": "Sentence",
+      "sentence": [
+        "Sentence",
+        "SentenceReading"
+      ],
       "audio": "SentenceAudio"
     }
   ]

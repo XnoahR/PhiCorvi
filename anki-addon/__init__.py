@@ -143,32 +143,45 @@ def store(col, text, speaker, data, kind):
 
 def resolved(col):
     """Config targets paired with the ordinals they actually map to, skipping
-    any whose note type or field the collection does not have."""
+    any whose note type or field the collection does not have.
+
+    A target may name several sentence fields. People turn off Yomitan's plain
+    {sentence} when a source gives it messy text, and keep only the furigana
+    one -- the sentence is still there, just wrapped in ruby. Reading it out of
+    whichever field is populated beats asking anyone to change their mining
+    setup to suit this add-on.
+    """
     out = []
     for t in conf()["targets"]:
         model = col.models.by_name(t.get("notetype", ""))
         if not model:
             continue
         ords = {f["name"]: f["ord"] for f in model["flds"]}
-        if t.get("sentence") in ords and t.get("audio") in ords:
-            out.append((model["id"], t["notetype"], ords[t["sentence"]], ords[t["audio"]]))
+        wanted = t.get("sentence")
+        wanted = [wanted] if isinstance(wanted, str) else list(wanted or [])
+        names = [n for n in wanted if n in ords]
+        if names and t.get("audio") in ords:
+            out.append((model["id"], t["notetype"],
+                        [ords[n] for n in names], ords[t["audio"]], names))
     return out
 
 
 def pending(col, extra=""):
-    """Note ids that have a sentence but no sentence audio."""
+    """Note ids that have a sentence somewhere but no sentence audio."""
     found = []
-    for _mid, name, s_ord, a_ord in resolved(col):
+    for _mid, name, s_ords, a_ord, s_names in resolved(col):
         t = next(x for x in conf()["targets"] if x["notetype"] == name)
-        query = '"note:%s" "%s:" -"%s:"' % (
-            name.replace('"', '\\"'), t["audio"], t["sentence"])
+        any_sentence = " or ".join('-"%s:"' % n for n in s_names)
+        query = '"note:%s" "%s:" (%s)' % (
+            name.replace('"', '\\"'), t["audio"], any_sentence)
         if extra:
             query = "%s (%s)" % (query, extra)
         try:
             ids = col.find_notes(query)
         except Exception:
+            log("pencarian gagal: %s" % query)
             continue
-        found.extend((nid, s_ord, a_ord) for nid in ids)
+        found.extend((nid, s_ords, a_ord) for nid in ids)
     return found
 
 
@@ -178,14 +191,18 @@ def fill(col, jobs, cfg, on_progress=None):
     errors = []
     notes = []
     limit = int(cfg["max_chars"])
-    for i, (nid, s_ord, a_ord) in enumerate(jobs):
+    for i, (nid, s_ords, a_ord) in enumerate(jobs):
         if on_progress and not on_progress(i, len(jobs)):
             break
         note = col.get_note(nid)
         if note.fields[a_ord].strip():
             skipped += 1
             continue
-        text = clean(note.fields[s_ord])
+        text = ""
+        for s_ord in s_ords:
+            text = clean(note.fields[s_ord])
+            if text:
+                break
         if not text or not HAS_JP.search(text) or len(text) > limit:
             skipped += 1
             continue

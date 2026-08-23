@@ -15,7 +15,10 @@ once it is multiplied by a few thousand cards and synced.
 import hashlib
 import html
 import json
+import os
 import re
+import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,6 +29,20 @@ from aqt.qt import QAction
 from aqt.utils import askUser, showInfo, showWarning, tooltip
 
 ADDON = __name__.split(".")[0]
+LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_files", "phicorvi.log")
+
+
+def log(msg):
+    """An add-on that fails silently is indistinguishable from one that never
+    loaded, which makes it impossible to tell apart from the outside. Every
+    decision that ends in "do nothing" says so here."""
+    try:
+        os.makedirs(os.path.dirname(LOG), exist_ok=True)
+        with open(LOG, "a", encoding="utf-8") as fh:
+            fh.write("%s  %s\n" % (time.strftime("%H:%M:%S"), msg))
+    except Exception:
+        pass
+
 
 DEFAULTS = {
     "bridge": "http://localhost:8772",
@@ -208,12 +225,21 @@ def _after_add(*args):
     """
     global _scheduled
     try:
-        if not conf()["auto"] or _scheduled or mw is None or mw.col is None:
+        cfg = conf()
+        if not cfg["auto"]:
+            log("hook: kartu ditambah, tapi auto=false")
+            return
+        if _scheduled:
+            return
+        if mw is None or mw.col is None:
+            log("hook: kartu ditambah, tapi mw/col belum siap")
             return
         _scheduled = True
+        log("hook: kartu ditambah, sapuan dijadwalkan 2.5 dtk lagi")
         mw.progress.single_shot(2500, _sweep, True)
     except Exception:
         _scheduled = False
+        log("hook: error\n" + traceback.format_exc())
 
 
 def _sweep():
@@ -226,7 +252,9 @@ def _sweep():
     # Mine fifty words in one sitting and an uncapped sweep would tie VOICEVOX up
     # for minutes with no progress bar and no way out -- while you are still
     # trying to mine. Take a bite, then come back for the rest.
+    log("sapuan: mulai")
     found = pending(mw.col, "added:1")
+    log("sapuan: %d kartu perlu audio" % len(found))
     limit = max(1, int(cfg.get("auto_limit", 25)))
     jobs, rest = found[:limit], len(found) - limit
     if not jobs:
@@ -239,7 +267,10 @@ def _sweep():
         try:
             n, _skipped, errors = fut.result()
         except Exception:
+            log("sapuan: meledak\n" + traceback.format_exc())
+            tooltip("PhiCorvi: gagal, lihat phicorvi.log")
             return
+        log("sapuan: selesai, terisi %d, error %s" % (n, errors or "tidak ada"))
         if n:
             mw.reset()
             tooltip("PhiCorvi: %d audio kalimat ditambahkan" % n)
@@ -326,6 +357,7 @@ def setup():
     mw.form.menuTools.addAction(act)
 
 
+log("--- add-on dimuat ---")
 hooks.note_will_be_added.append(_after_add)
 gui_hooks.browser_menus_did_init.append(on_browser_menus)
 gui_hooks.main_window_did_init.append(setup)

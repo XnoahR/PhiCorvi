@@ -12,3 +12,5 @@ Butuh aplikasi **PhiCorvi** hidup (dan VOICEVOX di dalamnya) waktu mengisi audio
 
 Mengisi banyak kartu sekaligus: **Tools → PhiCorvi: isi audio kalimat kosong…**
 Untuk kartu tertentu saja: pilih di Browse, lalu menu **Notes**.
+
+- **auto_limit** — berapa kartu paling banyak diisi sekali sapuan otomatis. Sisanya disusul sapuan berikutnya.

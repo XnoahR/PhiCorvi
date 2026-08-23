@@ -33,6 +33,7 @@ DEFAULTS = {
     "format": "mp3",
     "auto": True,
     "max_chars": 200,
+    "auto_limit": 25,
     "tag": "phicorvi-tts",
     "targets": [],
 }
@@ -220,10 +221,16 @@ def _sweep():
     _scheduled = False
     if mw.col is None or not conf()["auto"]:
         return
-    jobs = pending(mw.col, "added:1")
+    cfg = conf()
+    # "added:1" means everything added today, not just the card you just mined.
+    # Mine fifty words in one sitting and an uncapped sweep would tie VOICEVOX up
+    # for minutes with no progress bar and no way out -- while you are still
+    # trying to mine. Take a bite, then come back for the rest.
+    found = pending(mw.col, "added:1")
+    limit = max(1, int(cfg.get("auto_limit", 25)))
+    jobs, rest = found[:limit], len(found) - limit
     if not jobs:
         return
-    cfg = conf()
 
     def work():
         return fill(mw.col, jobs, cfg)
@@ -238,6 +245,8 @@ def _sweep():
             tooltip("PhiCorvi: %d audio kalimat ditambahkan" % n)
         elif errors:
             tooltip("PhiCorvi: gagal - %s" % errors[0][:60])
+        if rest > 0:
+            _after_add()
 
     mw.taskman.run_in_background(work, done)
 

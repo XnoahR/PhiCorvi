@@ -165,6 +165,33 @@ Put PhiCorvi first only if you want one consistent voice everywhere.
 
 ---
 
+## Anki: sentence audio on your mined cards
+
+Mining a word from a novel gives you the sentence as text and nothing to listen
+to -- there is no recording of a novel line the way there is for an anime
+subtitle. The add-on in [`anki-addon/`](anki-addon) fills that field by asking
+PhiCorvi to read the sentence.
+
+**Install** -- grab `PhiCorviSentenceAudio.ankiaddon` from the
+[latest release](../../releases/latest), double-click it, restart Anki.
+
+**Use it** -- keep PhiCorvi open while you mine. New cards fill themselves a
+couple of seconds after Yomitan adds them. For cards you already have:
+**Tools -> PhiCorvi: isi audio kalimat kosong...**, or select some in Browse and
+use the **Notes** menu.
+
+Out of the box it knows Kiku, Lapis, Lapis (Jiten) and JP Mining Note. For any
+other note type, add its name and field names under `targets` in the add-on's
+config.
+
+Audio comes back as mp3 rather than wav, which matters more than it sounds: a
+sentence is around 60 KB as mp3 against 700 KB as wav, and Anki syncs every byte
+of it. The conversion happens in PhiCorvi because Anki's Flatpak sandbox has no
+ffmpeg of its own.
+
+Notes it fills get a `phicorvi-tts` tag, so synthesized audio stays
+distinguishable from real recordings.
+
 ## Manatan
 
 Manatan works too, with two differences.

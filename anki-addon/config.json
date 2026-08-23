@@ -1,0 +1,14 @@
+{
+  "bridge": "http://localhost:8772",
+  "speaker": 19,
+  "format": "mp3",
+  "auto": true,
+  "max_chars": 200,
+  "tag": "phicorvi-tts",
+  "targets": [
+    {"notetype": "Kiku", "sentence": "Sentence", "audio": "SentenceAudio"},
+    {"notetype": "Lapis (Jiten)", "sentence": "Sentence", "audio": "SentenceAudio"},
+    {"notetype": "Lapis", "sentence": "Sentence", "audio": "SentenceAudio"},
+    {"notetype": "JP Mining Note", "sentence": "Sentence", "audio": "SentenceAudio"}
+  ]
+}

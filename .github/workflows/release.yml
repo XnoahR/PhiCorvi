@@ -1,4 +1,4 @@
-name: Build Windows app
+name: Build release artifacts
 
 on:
   push:
@@ -48,14 +48,27 @@ jobs:
           Stop-Process -Id $p.Id -Force
           Write-Host "app stayed running - no startup crash"
 
+      - name: Package the Anki add-on
+        shell: pwsh
+        # An .ankiaddon is a plain zip with the files at the root -- no folder,
+        # or Anki refuses it.
+        run: |
+          Compress-Archive -Path anki-addon/* -DestinationPath dist/PhiCorviSentenceAudio.zip -Force
+          Move-Item dist/PhiCorviSentenceAudio.zip dist/PhiCorviSentenceAudio.ankiaddon -Force
+          Write-Host "packaged the add-on"
+
       - uses: actions/upload-artifact@v4
         with:
           name: PhiCorvi-windows
-          path: dist/PhiCorvi.exe
+          path: |
+            dist/PhiCorvi.exe
+            dist/PhiCorviSentenceAudio.ankiaddon
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/PhiCorvi.exe
+          files: |
+            dist/PhiCorvi.exe
+            dist/PhiCorviSentenceAudio.ankiaddon
           generate_release_notes: true

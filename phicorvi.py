@@ -176,6 +176,38 @@ def synthesize(text, speaker):
     return audio
 
 
+def to_mp3(wav):
+    """Anki syncs its media folder, so a quarter-megabyte wav per sentence adds
+    up fast across thousands of cards. mp3 is about a tenth of that. Without
+    ffmpeg we hand the wav back unchanged rather than fail.
+
+    Both sides go through real files, not pipes. Writing mp3 to a pipe leaves
+    out the Xing header, because ffmpeg cannot seek back to fill it in -- the
+    audio still plays, but every player reads the wrong duration from it, and
+    some cut the sentence off partway.
+    """
+    exe = shutil.which("ffmpeg")
+    if not exe:
+        return wav, "wav"
+    tmp = tempfile.mkdtemp(prefix="phicorvi_")
+    src, dst = os.path.join(tmp, "in.wav"), os.path.join(tmp, "out.mp3")
+    try:
+        with open(src, "wb") as fh:
+            fh.write(wav)
+        proc = subprocess.run(
+            [exe, "-hide_banner", "-loglevel", "error", "-y", "-i", src,
+             "-codec:a", "libmp3lame", "-qscale:a", "6", "-ac", "1", dst],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+        if proc.returncode == 0 and os.path.getsize(dst) > 0:
+            with open(dst, "rb") as fh:
+                return fh.read(), "mp3"
+    except Exception:
+        pass
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return wav, "wav"
+
+
 def play_wav(data):
     path = os.path.join(tempfile.gettempdir(), "phicorvi_preview.wav")
     with open(path, "wb") as fh:
@@ -219,14 +251,26 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parsed.query)
         # Speak the reading, not the kanji -- TTS mispronounces rare words otherwise.
-        text = (params.get("reading") or params.get("term") or [""])[0].strip()
+        text = (params.get("text") or params.get("reading")
+                or params.get("term") or [""])[0].strip()
         speakers = list(state["speakers"]) or [DEFAULTS["speakers"][0]]
 
         if not text:
             self._send(b'{"type":"audioSourceList","audioSources":[]}', "application/json")
             return
         try:
-            if parsed.path.rstrip("/") in ("", "/list"):
+            if parsed.path.rstrip("/") == "/tts":
+                # Whole sentences, for the Anki add-on. Separate from /audio.wav
+                # because that one exists to satisfy Yomitan's JSON source shape.
+                asked = (params.get("speaker") or [""])[0]
+                sid = int(asked) if asked.isdigit() else speakers[0]
+                audio = synthesize(text, sid)
+                if (params.get("format") or ["mp3"])[0] == "mp3":
+                    audio, kind = to_mp3(audio)
+                else:
+                    kind = "wav"
+                self._send(audio, "audio/mpeg" if kind == "mp3" else "audio/wav")
+            elif parsed.path.rstrip("/") in ("", "/list"):
                 # Echo back whichever host the caller used: Manatan rejects any URL
                 # whose host looks local, so a hardcoded "localhost" would get the
                 # whole list discarded.

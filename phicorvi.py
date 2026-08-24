@@ -276,10 +276,12 @@ def play_wav(data):
 # ------------------------------------------------------------------ the bridge
 
 class Handler(BaseHTTPRequestHandler):
-    def _send(self, body, ctype, status=200):
+    def _send(self, body, ctype, status=200, extra=None):
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
+        for key, value in (extra or {}).items():
+            self.send_header(key, value)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Private-Network", "true")
         self.end_headers()
@@ -307,7 +309,11 @@ class Handler(BaseHTTPRequestHandler):
                     audio, kind = to_mp3(audio)
                 else:
                     kind = "wav"
-                self._send(audio, "audio/mpeg" if kind == "mp3" else "audio/wav")
+                # Say which voice actually spoke. A caller that leaves the choice
+                # to PhiCorvi still has to name the file it gets back, and two
+                # voices reading the same sentence must not collide.
+                self._send(audio, "audio/mpeg" if kind == "mp3" else "audio/wav",
+                           extra={"X-Speaker": str(sid)})
             elif parsed.path.rstrip("/") in ("", "/list"):
                 # Echo back whichever host the caller used: Manatan rejects any URL
                 # whose host looks local, so a hardcoded "localhost" would get the
@@ -457,6 +463,7 @@ class App:
             root.bind_all(seq, self.on_wheel)
 
         self._build_header()
+        self._build_sentence()
         self._build_chosen()
         self._build_library()
         self._build_connect()
@@ -553,6 +560,20 @@ class App:
               foreground=[("active", c["ink"])],
               indicatorcolor=[("selected", c["accent"]), ("!selected", c["field"])])
 
+        # Bigger than a chip on purpose. These two are the things people reach
+        # for while reading, and both used to be a checkbox and a text link --
+        # targets you have to aim at rather than just hit.
+        s.configure("Toggle.TButton", background=c["raised"], foreground=c["ink"],
+                    relief="flat", padding=(16, 10),
+                    font=("TkDefaultFont", 10))
+        s.map("Toggle.TButton", background=[("active", c["border"])],
+              foreground=[("active", c["ink"])])
+        s.configure("ToggleOn.TButton", background=c["accent"],
+                    foreground=c["accent_ink"], relief="flat", padding=(16, 10),
+                    font=("TkDefaultFont", 10, "bold"))
+        s.map("ToggleOn.TButton", background=[("active", c["accent_hover"])],
+              foreground=[("active", c["accent_ink"])])
+
         s.configure("Chip.TButton", background=c["surface"], foreground=c["muted"],
                     relief="flat", padding=(11, 5), font=("TkDefaultFont", 9))
         s.map("Chip.TButton", background=[("active", c["raised"])],
@@ -630,14 +651,6 @@ class App:
         self.bridge_dot = ttk.Label(dots, text="● PhiCorvi", style="CardFaint.TLabel")
         self.bridge_dot.pack(side="left", padx=(16, 0))
 
-        self.clip_var = tk.BooleanVar(value=bool(state.get("watch_clipboard", False)))
-        clip = ttk.Checkbutton(left, text="Bacakan teks Jepang yang saya salin",
-                               variable=self.clip_var, style="Card.TCheckbutton",
-                               command=self.on_clip_toggle)
-        clip.pack(anchor="w", pady=(10, 0))
-        self.clip_note = ttk.Label(left, text="", style="CardFaint.TLabel",
-                                   wraplength=380)
-        self.clip_note.pack(anchor="w")
 
         # Stays empty unless there is genuinely something newer, so it never
         # becomes a strip of chrome people learn to look past.
@@ -678,8 +691,9 @@ class App:
             % (found, VERSION))
 
     def on_clip_toggle(self):
-        state["watch_clipboard"] = bool(self.clip_var.get())
+        state["watch_clipboard"] = not bool(state.get("watch_clipboard", False))
         save_config()
+        self.render_clip()
         if state["watch_clipboard"]:
             # whatever is already on the clipboard should not fire immediately
             try:
@@ -688,7 +702,8 @@ class App:
                 self._last_clip = ""
             self.clip_note.configure(text="Blok kalimat lalu Ctrl+C.")
         else:
-            self.clip_note.configure(text="")
+            self.clip_note.configure(
+                text="Nyalakan, lalu blok kalimat apa pun dan tekan Ctrl+C.")
 
     def render_status(self):
         c = self.c
@@ -730,16 +745,53 @@ class App:
 
     # -- chosen voices ----------------------------------------------------
 
-    def _build_chosen(self):
+    def _build_sentence(self):
+        """The two things people use while reading, at a size you can hit.
+
+        Both were afterthoughts before -- a checkbox in a corner and a text link
+        in a section header. They are the reason the app is open at all."""
         hdr = ttk.Frame(self.outer)
         hdr.grid(row=1, column=0, sticky="ew", pady=(18, 6))
         hdr.columnconfigure(0, weight=1)
+        ttk.Label(hdr, text="KALIMAT", style="Section.TLabel").grid(
+            row=0, column=0, sticky="w")
+
+        card = ttk.Frame(self.outer, style="Card.TFrame", padding=(14, 12))
+        card.grid(row=2, column=0, sticky="ew")
+        card.columnconfigure(0, weight=1)
+        card.columnconfigure(1, weight=1)
+
+        self.clip_btn = ttk.Button(card, command=self.on_clip_toggle)
+        self.clip_btn.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        ttk.Button(card, text="Tulis atau tempel teks\u2026", style="Toggle.TButton",
+                   command=self.open_speak_window).grid(row=0, column=1, sticky="ew",
+                                                        padx=(6, 0))
+
+        self.clip_note = ttk.Label(card, text="", style="CardMuted.TLabel",
+                                   wraplength=420, justify="left")
+        self.clip_note.grid(row=1, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        self.render_clip()
+
+    def render_clip(self):
+        on = bool(state.get("watch_clipboard", False))
+        self.clip_btn.configure(
+            text=("\u25cf  Membaca yang saya salin" if on
+                  else "\u25cb  Bacakan yang saya salin"),
+            style="ToggleOn.TButton" if on else "Toggle.TButton")
+        if on and not self.clip_note.cget("text"):
+            self.clip_note.configure(text="Blok kalimat lalu Ctrl+C.")
+        elif not on:
+            self.clip_note.configure(
+                text="Nyalakan, lalu blok kalimat apa pun dan tekan Ctrl+C.")
+
+    def _build_chosen(self):
+        hdr = ttk.Frame(self.outer)
+        hdr.grid(row=3, column=0, sticky="ew", pady=(18, 6))
+        hdr.columnconfigure(0, weight=1)
         ttk.Label(hdr, text="VOICES YOMITAN WILL USE",
                   style="Section.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Button(hdr, text="Speak any text\u2026", style="Link.TButton",
-                   command=self.open_speak_window).grid(row=0, column=1, sticky="e")
         card = ttk.Frame(self.outer, style="Card.TFrame", padding=(4, 8))
-        card.grid(row=2, column=0, sticky="ew")
+        card.grid(row=4, column=0, sticky="ew")
         self.chosen_card = card
         self.chosen_list = ScrollList(card, height=80)
         self.chosen_list.pack(fill="x", expand=True)
@@ -789,7 +841,7 @@ class App:
 
     def _build_library(self):
         bar = ttk.Frame(self.outer)
-        bar.grid(row=3, column=0, sticky="ew", pady=(18, 0))
+        bar.grid(row=5, column=0, sticky="ew", pady=(18, 0))
         bar.columnconfigure(0, weight=1)
         header = ttk.Frame(bar)
         header.grid(row=0, column=0, sticky="ew")
@@ -814,7 +866,7 @@ class App:
             self.chips[name] = btn
 
         card = ttk.Frame(self.outer, style="Card.TFrame", padding=(4, 8))
-        card.grid(row=4, column=0, sticky="ew", pady=(8, 0))
+        card.grid(row=6, column=0, sticky="ew", pady=(8, 0))
         self.library_card = card
         self.library_list = ScrollList(card, height=190)
         self.library_list.pack(fill="both", expand=True)
@@ -1247,7 +1299,7 @@ class App:
         a novel means select + copy instead of select, copy, switch window,
         paste, click."""
         self.root.after(400, self.poll_clipboard)
-        if not self.clip_var.get():
+        if not state.get("watch_clipboard", False):
             return
         try:
             text = self.root.clipboard_get()

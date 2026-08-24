@@ -49,7 +49,7 @@ def log(msg):
 
 DEFAULTS = {
     "bridge": "http://localhost:8772",
-    "speaker": 19,
+    "speaker": 0,
     "format": "mp3",
     "auto": True,
     "max_chars": 200,
@@ -122,18 +122,31 @@ HAS_JP = re.compile(r"[぀-ヿ一-鿿]")
 # ------------------------------------------------------------------ the audio
 
 def fetch(text, cfg):
-    url = "%s/tts?%s" % (
-        cfg["bridge"].rstrip("/"),
-        urllib.parse.urlencode(
-            {"text": text, "speaker": int(cfg["speaker"]), "format": cfg["format"]}
-        ),
-    )
+    """Ask PhiCorvi to read a sentence.
+
+    The voice is deliberately not sent unless someone has pinned one here: two
+    places holding a voice setting means the one you cannot see wins, and it did
+    -- every mined sentence came out in the whisper voice while the app showed
+    something else. Left at 0, PhiCorvi's own first voice is used, so changing it
+    in the app changes it here.
+    """
+    params = {"text": text, "format": cfg["format"]}
+    try:
+        pinned = int(cfg["speaker"])
+    except (TypeError, ValueError):
+        pinned = 0
+    if pinned > 0:
+        params["speaker"] = pinned
+
+    url = "%s/tts?%s" % (cfg["bridge"].rstrip("/"), urllib.parse.urlencode(params))
     with urllib.request.urlopen(url, timeout=120) as resp:
         data = resp.read()
         kind = "mp3" if "mpeg" in (resp.headers.get("Content-Type") or "") else "wav"
+        # Whichever voice actually spoke, so the filename tells two of them apart
+        voice = (resp.headers.get("X-Speaker") or "").strip() or str(pinned)
     if not data:
         raise ValueError("bridge returned nothing")
-    return data, kind
+    return data, kind, voice
 
 
 def store(col, text, speaker, data, kind):
@@ -211,8 +224,8 @@ def fill(col, jobs, cfg, on_progress=None):
             skipped += 1
             continue
         try:
-            data, kind = fetch(text, cfg)
-            name = store(col, text, cfg["speaker"], data, kind)
+            data, kind, voice = fetch(text, cfg)
+            name = store(col, text, voice, data, kind)
         except Exception as exc:
             errors.append("%s: %s" % (text[:24], exc))
             if len(errors) >= 5:
@@ -331,8 +344,10 @@ def run_bulk(nids=None):
     if not askUser(
         "Isi audio kalimat untuk %d kartu (%s)?\n\n"
         "Perkiraan waktu: sekitar %d menit.\n"
-        "Suara: speaker %s. Bisa dibatalkan di tengah jalan."
-        % (len(jobs), where, max(1, round(len(jobs) * 2.5 / 60)), cfg["speaker"])
+        "Suara: %s. Bisa dibatalkan di tengah jalan."
+        % (len(jobs), where, max(1, round(len(jobs) * 2.5 / 60)),
+           "ikut PhiCorvi" if int(cfg["speaker"] or 0) <= 0
+           else "speaker %s" % cfg["speaker"])
     ):
         return
 
@@ -424,10 +439,34 @@ def check_update():
     mw.taskman.run_in_background(work, done)
 
 
+def set_auto(on):
+    """Flip automatic filling without opening the config.
+
+    Mining from video already brings its own audio, and having a second one
+    synthesised over every card makes that slower for no gain -- so this has to
+    be reachable in a second, not buried in a JSON file."""
+    raw = mw.addonManager.getConfig(ADDON) or {}
+    raw["auto"] = bool(on)
+    mw.addonManager.writeConfig(ADDON, raw)
+    log("auto -> %s" % bool(on))
+    tooltip("Audio kalimat otomatis: %s" % ("nyala" if on else "mati"), period=3000)
+
+
 def setup():
-    act = QAction("PhiCorvi: isi audio kalimat kosong…", mw)
+    menu = mw.form.menuTools.addMenu("PhiCorvi")
+
+    auto = QAction("Isi audio kalimat otomatis saat mining", mw)
+    auto.setCheckable(True)
+    auto.setChecked(bool(conf()["auto"]))
+    auto.setToolTip("Matikan kalau audio kalimatnya sudah datang dari sumber "
+                    "lain, misalnya asbplayer waktu mining anime")
+    auto.toggled.connect(set_auto)
+    menu.addAction(auto)
+
+    menu.addSeparator()
+    act = QAction("Isi audio kalimat yang kosong…", mw)
     act.triggered.connect(lambda _=False: run_bulk(None))
-    mw.form.menuTools.addAction(act)
+    menu.addAction(act)
     mw.progress.single_shot(8000, check_update, True)
 
 

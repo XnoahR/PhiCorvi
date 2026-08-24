@@ -1,6 +1,6 @@
 {
   "bridge": "http://localhost:8772",
-  "speaker": 19,
+  "speaker": 0,
   "format": "mp3",
   "auto": true,
   "max_chars": 200,

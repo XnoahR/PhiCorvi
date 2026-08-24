@@ -1096,9 +1096,9 @@ class App:
 
     def _build_connect(self):
         ttk.Label(self.outer, text="CONNECT", style="Section.TLabel").grid(
-            row=5, column=0, sticky="w", pady=(18, 6))
+            row=7, column=0, sticky="w", pady=(18, 6))
         card = ttk.Frame(self.outer, style="Card.TFrame", padding=14)
-        card.grid(row=6, column=0, sticky="ew")
+        card.grid(row=8, column=0, sticky="ew")
         card.columnconfigure(0, weight=1)
         self.connect_card = card
 
@@ -1138,7 +1138,7 @@ class App:
     def _build_advanced(self):
         self.adv_toggle = ttk.Button(self.outer, text="▸  Advanced settings",
                                      style="Link.TButton", command=self.toggle_advanced)
-        self.adv_toggle.grid(row=7, column=0, sticky="w", pady=(12, 0))
+        self.adv_toggle.grid(row=9, column=0, sticky="w", pady=(12, 0))
 
         self.adv = ttk.Frame(self.outer, style="Card.TFrame", padding=14)
         self.adv.columnconfigure(6, weight=1)
@@ -1165,7 +1165,7 @@ class App:
     def toggle_advanced(self):
         self.advanced_open = not self.advanced_open
         if self.advanced_open:
-            self.adv.grid(row=8, column=0, sticky="ew", pady=(8, 0))
+            self.adv.grid(row=10, column=0, sticky="ew", pady=(8, 0))
             self.adv_toggle.configure(text="▾  Advanced settings")
         else:
             self.adv.grid_remove()

@@ -303,6 +303,12 @@ the next lookup. For automatic playback, use Yomitan.
 - [English](docs/SETUP.md) — manual setup without the app
 - [Bahasa Indonesia (manual)](docs/SETUP-id.md) — cara manual tanpa aplikasi
 
+Reading sentences in a voice of your own:
+
+- [Irodori guide](docs/IRODORI.md) — what the recording has to be, and why that is
+  the part that decides whether it works
+- [Panduan Irodori](docs/IRODORI-id.md) — versi Bahasa Indonesia
+
 ---
 
 ## Update checks

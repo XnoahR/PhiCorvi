@@ -39,7 +39,7 @@ else:
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(APP_DIR, "phicorvi_config.json")
 
-VERSION = "1.3.1"
+VERSION = "1.4.0"
 REPO = "XnoahR/PhiCorvi"
 RELEASES = "https://github.com/%s/releases/latest" % REPO
 

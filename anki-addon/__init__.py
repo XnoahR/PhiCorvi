@@ -30,7 +30,7 @@ from aqt.qt import QAction
 from aqt.utils import askUser, showInfo, showWarning, tooltip
 
 ADDON = __name__.split(".")[0]
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 REPO = "XnoahR/PhiCorvi"
 RELEASES = "https://github.com/%s/releases/latest" % REPO
 LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_files", "phicorvi.log")

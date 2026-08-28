@@ -17,7 +17,7 @@ Irodori is heavy, and it is better to know now than halfway in.
 | | |
 |---|---|
 | **Graphics card** | NVIDIA, 4 GB VRAM or more. It runs without one, at 18× realtime -- roughly a minute a sentence, which is not usable. |
-| **Disk** | About 11 GB. Stoppable and resumable; it does not have to be one sitting. |
+| **Disk** | ~5 GB downloaded, ~6 GB used. The installer asks for 11 GB free as headroom. Stoppable and resumable. |
 | **Speed** | ~5 seconds per new sentence. Replaying a card is free. |
 | **Internet** | Only for the download. After that it runs entirely offline. |
 
@@ -35,6 +35,11 @@ Everything lands inside your Anki add-on folder rather than somewhere you have
 to remember -- and that folder survives add-on upgrades.
 
 It fetches its own Python, so the machine needs neither Python nor git.
+
+The model itself is only **1.3 GB**. The rest is PyTorch and the CUDA libraries,
+around 7 GB, which is the entry cost of any neural TTS rather than anything
+particular to Irodori. If you already have a PyTorch install, much of it is
+shared and the real growth is far smaller.
 
 > **If it stops partway**, press it again. Whatever finished is skipped.
 

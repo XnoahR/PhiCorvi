@@ -17,7 +17,7 @@ Irodori berat, dan lebih baik kamu tahu sekarang daripada di tengah jalan.
 | | |
 |---|---|
 | **Kartu grafis** | NVIDIA, minimal 4 GB VRAM. Tanpa itu jalan juga, tapi 18× lebih lambat — satu kalimat semenit. Praktis nggak kepakai. |
-| **Ruang disk** | Sekitar 11 GB. Bisa dihentikan lalu disambung, nggak harus sekali jalan. |
+| **Ruang disk** | Unduhan ~5 GB, terpakai ~6 GB. Pemasangnya minta 11 GB kosong sebagai jaga-jaga. Bisa dihentikan lalu disambung. |
 | **Kecepatan** | ~5 detik per kalimat baru. Kartu yang sama diputar ulang gratis. |
 | **Internet** | Cuma sekali waktu download. Setelah itu jalan sepenuhnya offline. |
 
@@ -36,6 +36,11 @@ dan folder itu selamat kalau add-on-nya diperbarui.
 
 Yang diunduh: mesin Python-nya sendiri (jadi komputermu nggak perlu punya
 Python), sumber servernya, dan bobot modelnya.
+
+Modelnya sendiri cuma **1,3 GB**. Sisanya PyTorch dan pustaka CUDA — sekitar
+7 GB, dan itu ongkos masuk semua TTS neural, bukan sesuatu yang khas Irodori.
+Kalau kamu sudah pernah memasang sesuatu berbasis PyTorch, sebagiannya dipakai
+bersama dan yang benar-benar bertambah jauh lebih kecil.
 
 > **Kalau berhenti di tengah**, tinggal klik lagi. Yang sudah terunduh dilewati.
 

@@ -611,6 +611,61 @@ def _unduh(url, tujuan, lapor, label, perkiraan=0):
     return None
 
 
+def _uv_sync(uv, extra, kwargs, lapor):
+    """Jalankan `uv sync` sambil membaca kemajuannya, bukan sesudahnya.
+
+    Ini tiga perempat unduhannya dan hampir seluruh waktunya. Sebelumnya
+    stderr-nya baru dibaca setelah proses selesai, jadi bagian terpanjang
+    pemasangan tidak memberi satu pun tanda hidup -- tidak bisa dibedakan dari
+    aplikasi yang menggantung.
+
+    uv menulis satu baris per paket saat dipipa (bukan mode batang TTY-nya),
+    jadi yang dihitung paket yang selesai terhadap paket yang sudah diumumkan.
+    Berbasis cacah dan bukan byte: ukurannya tidak diketahui sampai paketnya
+    diumumkan, dan cacah tidak pernah mundur ketika satu paket besar menyusul.
+    """
+    import re
+    diumumkan, selesai = set(), set()
+    puncak = 0.0
+    ekor = []
+    try:
+        p = subprocess.Popen([uv, "sync", "--extra", extra], **kwargs)
+    except Exception as exc:
+        return "uv could not run: %s" % exc
+    for baris in iter(p.stderr.readline, b""):
+        if _install_stop:
+            p.terminate()
+            return "dibatalkan"
+        b = baris.decode("utf-8", "replace").strip()
+        if not b:
+            continue
+        ekor.append(b)
+        del ekor[:-6]
+        m = re.match(r"Downloading ([\w.-]+)", b)
+        if m:
+            diumumkan.add(m.group(1))
+        m = re.match(r"Downloaded ([\w.-]+)", b)
+        if m:
+            selesai.add(m.group(1))
+        # Gabungan, bukan yang diumumkan saja: uv mengumumkan paket dengan
+        # malas, dan yang selesai lebih cepat daripada diumumkan hanya muncul
+        # sebagai "Downloaded". Memakai penyebut yang lebih kecil menghasilkan
+        # "6/4" dan batang yang mundur -- dan batang yang mundur terbaca
+        # seperti kegagalan.
+        n = len(diumumkan | selesai)
+        if n:
+            puncak = max(puncak, min(1.0, len(selesai) / float(n)))
+            lapor("Python packages  %d/%d" % (len(selesai), n), puncak)
+        else:
+            # Sebelum paket pertama diumumkan, yang ada cuma "Resolved" dan
+            # "Checked" -- ditampilkan apa adanya daripada layar kosong.
+            lapor(b[:70], None)
+    p.wait()
+    if p.returncode != 0:
+        return "uv sync failed: %s" % (ekor[-1] if ekor else p.returncode)
+    return None
+
+
 def _rentang(lapor, awal, lebar):
     """Pelapor yang memetakan 0..1 sebuah langkah ke sepotong batang utuh."""
     def dalam(teks, pecahan=None):
@@ -639,7 +694,7 @@ def irodori_install(lapor):
     if not os.path.exists(uv):
         aset = UV_ASSET["nt" if os.name == "nt" else "posix"]
         paket = os.path.join(alat, aset)
-        salah = _unduh(UV_URL % aset, paket, _rentang(lapor, 0.0, 0.03),
+        salah = _unduh(UV_URL % aset, paket, _rentang(lapor, 0.0, 0.02),
                        "uv")
         if salah:
             return salah
@@ -668,7 +723,7 @@ def irodori_install(lapor):
     server = os.path.join(rumah, "server")
     if not os.path.exists(os.path.join(server, "pyproject.toml")):
         tar = os.path.join(rumah, "server.tar.gz")
-        salah = _unduh(IRODORI_REPO_TAR, tar, _rentang(lapor, 0.03, 0.02),
+        salah = _unduh(IRODORI_REPO_TAR, tar, _rentang(lapor, 0.02, 0.01),
                        "server source")
         if salah:
             return salah
@@ -694,7 +749,6 @@ def irodori_install(lapor):
 
     # 3. lingkungan Python -- langkah terberat, dan satu-satunya yang tidak
     #    bisa dilaporkan per megabyte karena uv yang memegang unduhannya.
-    lapor("Installing Python packages (this is the long part)", None)
     extra = "cu128" if gpu else "cpu"
     env = dict(os.environ)
     # Mode tautan dibiarkan pada bawaan uv: ia mencoba hardlink dan jatuh ke
@@ -702,23 +756,23 @@ def irodori_install(lapor):
     # menggandakan berkas yang sudah ada di cache -- hampir 8 GB percuma pada
     # pemasangan yang cache-nya sedisk.
     env["UV_HTTP_TIMEOUT"] = "600"
-    kwargs = {"cwd": server, "env": env,
-              "stdout": subprocess.DEVNULL, "stderr": subprocess.PIPE}
+    kwargs = {"cwd": server, "env": env, "stdout": subprocess.DEVNULL,
+              "stderr": subprocess.PIPE}
     if os.name == "nt":
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    try:
-        p = subprocess.run([uv, "sync", "--extra", extra], **kwargs)
-    except Exception as exc:
-        return "uv could not run: %s" % exc
-    if p.returncode != 0:
-        ekor = (p.stderr or b"").decode("utf-8", "replace").strip().splitlines()
-        return "uv sync failed: %s" % (ekor[-1] if ekor else p.returncode)
+    salah = _uv_sync(uv, extra, kwargs, _rentang(lapor, 0.03, 0.72))
+    if salah:
+        return salah
 
     # 4. bobot model
     model = os.path.join(rumah, "models")
     for i, (url, rel, besar) in enumerate(IRODORI_WEIGHTS):
         salah = _unduh(url, os.path.join(model, rel),
-                       _rentang(lapor, 0.60 + 0.09 * i, 0.09),
+                       # Bobot model ~1,3 GB dari ~5 GB: seperempat unduhan,
+                       # jadi seperempat batangnya. Pembagian lama memberinya
+                       # 36% dan menyisakan satu titik untuk uv sync yang
+                       # tiga kali lebih besar.
+                       _rentang(lapor, 0.75 + 0.055 * i, 0.055),
                        rel.split("/")[0], besar)
         if salah:
             return salah
@@ -2191,10 +2245,18 @@ class App:
                                       command=self.toggle_iro_server)
         self.iro_run_btn.grid(row=5, column=2, sticky="w", pady=(8, 0))
 
-        self.iro_get_btn = ttk.Button(baca, text="Download engine",
+        unduh = ttk.Frame(baca, style="Card.TFrame")
+        unduh.grid(row=6, column=1, columnspan=2, sticky="ew",
+                   padx=(10, 0), pady=(8, 0))
+        unduh.columnconfigure(1, weight=1)
+        self.iro_get_btn = ttk.Button(unduh, text="Download engine",
                                       command=self.toggle_iro_install)
-        self.iro_get_btn.grid(row=6, column=1, columnspan=2, sticky="w",
-                              padx=(10, 0), pady=(8, 0))
+        self.iro_get_btn.grid(row=0, column=0, sticky="w")
+        # Disembunyikan sampai ada yang diunduh: batang kosong yang menetap
+        # sepanjang waktu adalah hiasan yang orang belajar abaikan.
+        self.iro_bar = ttk.Progressbar(unduh, mode="determinate", maximum=1000)
+        self.iro_bar.grid(row=0, column=1, sticky="ew", padx=(10, 0))
+        self.iro_bar.grid_remove()
 
         ttk.Label(baca, text="Reference voice", style="CardFaint.TLabel").grid(
             row=7, column=0, sticky="w", pady=(8, 0))
@@ -2345,17 +2407,32 @@ class App:
             return
         self.iro_get_btn.configure(text="Stop")
 
+        self.iro_bar.grid()
+        self.iro_bar.configure(mode="determinate", value=0)
+
         def lapor(teks, pecahan=None):
             # Dipanggil dari thread pengunduh; Tk hanya boleh disentuh dari
             # thread utamanya.
-            self.root.after(0, lambda: self.iro_note.configure(text=teks))
+            self.root.after(0, lambda: self.install_progres(teks, pecahan))
 
         def selesai(salah):
             self.root.after(0, lambda: self.iro_install_done(salah))
 
         irodori_install_start(lapor, selesai)
 
+    def install_progres(self, teks, pecahan):
+        """Teks selalu, batang kalau langkahnya tahu sudah sejauh mana.
+
+        Langkah tanpa angka -- menyelesaikan dependensi, menulis peluncur --
+        membiarkan batangnya di tempat terakhir alih-alih memundurkannya ke nol.
+        Batang yang mundur membaca seperti kegagalan.
+        """
+        self.iro_note.configure(text=teks)
+        if pecahan is not None:
+            self.iro_bar.configure(value=max(0, min(1000, int(pecahan * 1000))))
+
     def iro_install_done(self, salah):
+        self.iro_bar.grid_remove()
         self.iro_get_btn.configure(text="Download engine", state="normal")
         if salah:
             self.iro_note.configure(text=salah)

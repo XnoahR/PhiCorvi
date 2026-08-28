@@ -70,7 +70,7 @@ configure.
 | **Copy** | Ready-to-paste URLs for Yomitan and Manatan. |
 | **Speak any text** | Paste a sentence or a whole paragraph, hear it, and save it as a file. |
 | **Read what I copy** | Tick it, then just select a sentence and press Ctrl+C while you read. Japanese text is spoken; URLs, code and anything too long are ignored. |
-| **Settings** | Port, speed, intonation. Lower intonation = flatter, calmer. |
+| **Settings** | Three tabs beside Home. **Reading**: port, speed, intonation, and which engine reads the sentence. **Scene tone**: the model that marks sentences up with emotion. Lower intonation = flatter, calmer. |
 | **Theme** | Light and dark, both blue. |
 
 Settings save to `phicorvi_config.json` beside the script.
@@ -191,6 +191,94 @@ ffmpeg of its own.
 
 Notes it fills get a `phicorvi-tts` tag, so synthesized audio stays
 distinguishable from real recordings.
+
+## A different reading engine
+
+VOICEVOX is the default and stays the default. Its readings come from a
+dictionary, so a rare word is spoken correctly rather than guessed at -- which
+matters more in a vocabulary tool than the voice does.
+
+**Irodori-TTS** is the alternative: a neural engine that reads the sentence and
+copies a voice from one recording at the same time. Give it a clip of somebody
+talking and it will read your mined sentences in that voice, with no training
+step and nothing to convert afterwards.
+
+The **Reading** tab is where it lives:
+
+```
+Engine           [ Irodori ▾ ]
+Irodori address  [ http://127.0.0.1:8088 ]  [Find]
+Server           [ …/irodori/serve.sh ]     [Start]
+                 [Download engine]
+Reference voice  [ waguri ▾ ]               [Add…]
+```
+
+**Download engine** fetches the whole thing into the PhiCorvi add-on folder --
+uv, the server source, the model weights, and a launcher -- and points *Server*
+at it. It needs neither Python nor git on the machine: uv brings its own. Expect
+about 11 GB with an NVIDIA card, or 4 GB CPU-only, and it can be stopped and
+resumed. The dialog says the size and the destination before anything downloads.
+
+**Start** runs the server as a child process, so it shuts down with the app.
+Loading the model takes about half a minute, and the note counts the seconds and
+shows what the server itself is saying while it does.
+
+### Voices
+
+A voice is one folder of recordings:
+
+```
+<add-on>/user_files/irodori/voice_model/
+    bocchi/     bocchi.mp3
+    nijika/     nijika.mp3
+    waguri/     1-waguri2.mp3
+```
+
+The folder name is the voice name. Add a character by making a folder and
+dropping a recording in -- nothing to restart. **Add…** does the same through a
+file picker.
+
+Only the **first 8 seconds** are used, and where several files sit in one folder
+they are joined in filename order, so the first file decides the voice. Ten
+seconds of clean, single-speaker speech is enough; music, echo, and clips of
+reaction noises rather than speech all get copied into every sentence you
+generate.
+
+Two behaviours are deliberate:
+
+- **If Irodori fails and VOICEVOX is running, the sentence comes back in the
+  VOICEVOX voice** rather than not at all. That fallback is never cached, so
+  fixing the server is heard immediately instead of after the cache turns over.
+  The reply carries `X-Engine`, so you can tell which one actually spoke.
+- **Everything that changes the sound is part of the cache key** -- engine,
+  voice, speed, intonation, and the emoji markup below. Change any of them and
+  the next sentence is synthesised again rather than served from before.
+
+## Scene tone
+
+Off by default. Turned on, a language model reads each mined sentence and marks
+it up with the emoji Irodori understands as delivery instructions -- a chuckle
+here, a gasp there -- so a line sounds like the scene it came from instead of
+being read flat.
+
+The **Scene tone** tab takes an API key of your own, a model name, and the
+address of any OpenAI-compatible endpoint.
+
+**Your sentence is never reworded.** The reply is only used when removing the
+emoji gives back your sentence character for character; a model that
+paraphrases, drops a clause, or "corrects" a rare kanji fails that check and is
+discarded. That matters in a vocabulary tool, where a card that reads back
+something other than what you mined is worse than a card read flatly.
+
+Three things worth knowing:
+
+- **It only runs on whole sentences.** Yomitan word lookups skip it entirely --
+  a single word has no scene to have a tone.
+- **It costs one call per new sentence**, and the answer is kept, so replaying a
+  card is free. On a free provider the call is usually the slowest part of the
+  chain, and its latency varies more than the synthesis does.
+- **Every failure is silent and harmless.** No key, no answer, a bad reply, or
+  VOICEVOX as the engine, and the sentence is simply read plainly.
 
 ## Manatan
 

@@ -17,6 +17,7 @@ import html
 import json
 import os
 import re
+import threading
 import time
 import traceback
 import urllib.error
@@ -452,6 +453,32 @@ def set_auto(on):
     tooltip("Audio kalimat otomatis: %s" % ("nyala" if on else "mati"), period=3000)
 
 
+HOME = os.path.dirname(os.path.abspath(__file__))
+
+
+def say_hello():
+    """Beri tahu PhiCorvi di mana add-on ini berada.
+
+    PhiCorvi memasang mesin Irodori ke dalam folder add-on, karena itulah satu-
+    satunya folder yang pasti dimiliki setiap pengguna -- mereka tidak menarik
+    repo. Tapi PhiCorvi tidak bisa menebaknya dengan andal: folder data Anki
+    berbeda di empat platform, dan nama folder add-on bisa berupa nomor
+    AnkiWeb. Yang tahu persis letaknya hanya add-on itu sendiri.
+
+    Dijalankan di luar thread utama dan gagal diam-diam: PhiCorvi mungkin belum
+    menyala, dan itu bukan alasan menahan Anki saat dibuka.
+    """
+    url = "%s/hello?home=%s" % (conf()["bridge"].rstrip("/"),
+                                urllib.parse.quote(HOME))
+    try:
+        with urllib.request.urlopen(url, timeout=4) as r:
+            jawab = json.loads(r.read().decode("utf-8", "replace"))
+        log("hello -> %s, engine di %s"
+            % (jawab.get("ok"), jawab.get("engine_home")))
+    except Exception as exc:
+        log("hello gagal (PhiCorvi belum jalan?): %s" % exc)
+
+
 def setup():
     menu = mw.form.menuTools.addMenu("PhiCorvi")
 
@@ -468,6 +495,8 @@ def setup():
     act.triggered.connect(lambda _=False: run_bulk(None))
     menu.addAction(act)
     mw.progress.single_shot(8000, check_update, True)
+    # Menyentuh jaringan, jadi jangan di thread utama saat Anki baru dibuka.
+    threading.Thread(target=say_hello, daemon=True).start()
 
 
 log("--- add-on dimuat ---")

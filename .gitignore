@@ -2,4 +2,9 @@ __pycache__/
 *.pyc
 phicorvi_config.json
 *.ankiaddon
-rvc_serve.py
+
+# Sisa uji coba. Ketiganya pernah ikut ter-commit tanpa sengaja, dan
+# tidak ada satu pun kode yang merujuknya.
+*.log
+*.mp3
+*.wav

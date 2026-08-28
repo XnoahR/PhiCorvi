@@ -27,6 +27,21 @@ more or less the job.*
 
 ## Download
 
+A release carries two files, and they are not alternatives:
+
+| | | |
+|---|---|---|
+| `PhiCorvi.exe` | the app itself — runs the bridge, holds the settings, talks to VOICEVOX and Irodori | **required** |
+| `PhiCorviSentenceAudio.ankiaddon` | an Anki add-on that fills the sentence-audio field on mined cards | optional |
+
+The add-on is a client of the app, not a replacement for it: all it does is send
+a sentence to `localhost:8772` and wait for the audio back. With the app closed
+it does nothing at all. Yomitan does not need the add-on -- it talks to the app
+directly.
+
+So: **hovering words in Yomitan** needs the exe alone. **Mined cards filling
+their own sentence audio** needs both.
+
 **Windows:** grab `PhiCorvi.exe` from the
 [latest release](https://github.com/XnoahR/PhiCorvi/releases/latest). Nothing to
 install — double-click it. Python is bundled inside.
@@ -173,9 +188,11 @@ subtitle. The add-on in [`anki-addon/`](anki-addon) fills that field by asking
 PhiCorvi to read the sentence.
 
 **Install** -- grab `PhiCorviSentenceAudio.ankiaddon` from the
-[latest release](../../releases/latest), double-click it, restart Anki.
+[latest release](../../releases/latest), double-click it, restart Anki. This is
+the add-on, not the app; you need `PhiCorvi.exe` as well.
 
-**Use it** -- keep PhiCorvi open while you mine. New cards fill themselves a
+**Use it** -- keep PhiCorvi open while you mine. The add-on asks it for every
+sentence, so a closed app means an empty field. New cards fill themselves a
 couple of seconds after Yomitan adds them. For cards you already have:
 **Tools -> PhiCorvi: isi audio kalimat kosong...**, or select some in Browse and
 use the **Notes** menu.

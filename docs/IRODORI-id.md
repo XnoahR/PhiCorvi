@@ -6,7 +6,10 @@ pendek. Kasih dia klip sepuluh detik, dan kalimat mining-mu dibacakan dengan
 suara itu.
 
 **Butuh waktu:** sekitar 20 menit, kebanyakan nunggu download.
-**Perlu jago komputer?** Nggak. Tapi butuh kartu grafis NVIDIA.
+**Perlu jago komputer?** Nggak. Tapi butuh kartu grafis NVIDIA, dan add-on
+Anki-nya sudah terpasang — **Download engine** menaruh mesinnya di dalam folder
+add-on itu, karena cuma folder itu yang pasti dimiliki semua orang dan selamat
+waktu add-on diperbarui.
 
 ---
 

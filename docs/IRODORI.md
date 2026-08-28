@@ -6,7 +6,9 @@ while it reads. Give it ten seconds of somebody talking, and your mined
 sentences come back in that voice.
 
 **Time:** about 20 minutes, most of it waiting on a download.
-**Needs:** an NVIDIA card.
+**Needs:** an NVIDIA card, and the Anki add-on installed -- **Download engine**
+puts the engine inside the add-on's folder, which is the one folder every user
+has and which survives add-on upgrades.
 
 ---
 

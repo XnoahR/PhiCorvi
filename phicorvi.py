@@ -15,6 +15,7 @@ import os
 import platform
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tarfile
@@ -82,6 +83,18 @@ DEFAULTS = {
     "emotion_url": "https://api.deepseek.com/v1/chat/completions",
     "emotion_key": "",
     "emotion_model": "deepseek-chat",
+    # Fish Audio: mesin ketiga, dan satu-satunya yang tidak berjalan di mesin
+    # ini. Tidak perlu kartu grafis, tidak perlu unduhan, dan suaranya bukan
+    # rekaman di disk melainkan id model dari perpustakaan publik mereka.
+    #
+    # Kuncinya sengaja kosong di sini dan hanya hidup di phicorvi_config.json:
+    # berkas ini publik, berkas itu tidak.
+    "fish_url": "https://api.fish.audio",
+    "fish_key": "",
+    "fish_model": "s2.1-pro-free",
+    "fish_voice": "",
+    # [{"name": ..., "id": ...}] -- nama untuk dibaca manusia, id untuk API.
+    "fish_voices": [],
 }
 
 # Irodori reads these emoji as delivery instructions -- they are annotations,
@@ -126,6 +139,13 @@ EMOJI = {
     "😱": "scream, shriek",
     "📖": "narration, monologue",
 }
+
+# Nama mesin untuk mata dan untuk berkas, di satu tempat. Dua peta yang
+# ditulis terpisah pasti berbeda suatu hari, dan yang tidak cocok akan
+# diam-diam mengembalikan setelan ke VOICEVOX.
+ENGINE_LABEL = {"voicevox": "VOICEVOX", "irodori": "Irodori",
+                "fish": "Fish Audio"}
+ENGINE_KEY = {v: k for k, v in ENGINE_LABEL.items()}
 
 # Only speak things that actually look Japanese. Without this the watcher reads
 # out every URL, file path and snippet of code you copy.
@@ -1022,6 +1042,163 @@ def irodori_speak(text, fmt="wav", voice=None):
 
 
 
+# ------------------------------------------------------------------ Fish Audio
+
+# Sebuah suara di sini adalah id model, dan yang dipegang orang biasanya
+# halamannya, bukan id-nya. Tautan penuh, id telanjang, dan id dengan spasi
+# nyasar semuanya sampai ke sini.
+FISH_ID = re.compile(r"([0-9a-f]{32})")
+
+
+def fish_on():
+    return (str(state.get("tts_engine") or "voicevox") == "fish"
+            and bool(str(state.get("fish_key") or "").strip()))
+
+
+def fish_base():
+    return (str(state.get("fish_url") or "https://api.fish.audio")
+            .strip().rstrip("/"))
+
+
+def fish_req(path, data=None, extra=None, timeout=90):
+    head = {"Authorization": "Bearer %s"
+                             % str(state.get("fish_key") or "").strip()}
+    if data is not None:
+        head["Content-Type"] = "application/json"
+    head.update(extra or {})
+    req = urllib.request.Request(fish_base() + path, data=data,
+                                 method="POST" if data is not None else "GET",
+                                 headers=head)
+    return urllib.request.urlopen(req, timeout=timeout).read()
+
+
+def fish_voice_list():
+    """Suara tersimpan, selalu berbentuk {name, id} bagaimanapun berkasnya
+    pernah disunting tangan."""
+    keluar = []
+    for v in state.get("fish_voices") or []:
+        if isinstance(v, dict) and v.get("id"):
+            keluar.append({"name": str(v.get("name") or v["id"]),
+                           "id": str(v["id"])})
+    return keluar
+
+
+def fish_voice_names():
+    return [v["name"] for v in fish_voice_list()]
+
+
+def fish_voice_id(nama=None):
+    """Id di balik sebuah nama tersimpan -- atau namanya sendiri kalau itu
+    memang sudah id.
+
+    Mengetik id langsung ke kotaknya harus tetap bekerja: perpustakaan berisi
+    satu suara tidak sepadan dengan sebuah dialog, dan id itulah yang diminta
+    API-nya.
+    """
+    nama = str(state.get("fish_voice") if nama is None else nama).strip()
+    for v in fish_voice_list():
+        if v["name"] == nama:
+            return v["id"]
+    m = FISH_ID.search(nama)
+    return m.group(1) if m else ""
+
+
+def fish_lookup(teks):
+    """Nama dan id untuk tautan atau id yang ditempel, atau None.
+
+    Katalognya publik, jadi ini bekerja sebelum kunci apa pun ditempel -- dan
+    itu penting, karena kalau tidak, menambah suara akan gagal justru karena
+    satu-satunya sebab yang pesannya tidak bisa jelaskan.
+    """
+    m = FISH_ID.search(str(teks or ""))
+    if not m:
+        return None
+    ident = m.group(1)
+    try:
+        d = json.loads(urllib.request.urlopen(
+            "%s/model/%s" % (fish_base(), ident), timeout=15).read())
+    except Exception:
+        return None
+    if not d.get("_id"):
+        return None
+    return {"name": str(d.get("title") or ident).strip(),
+            "id": str(d["_id"]),
+            "languages": d.get("languages") or []}
+
+
+# Jawaban terakhir dan kapan ditanyakan. Titik status berdetak tiap lima detik,
+# dan API terhosting tidak pantas ditanya dua belas kali semenit untuk sesuatu
+# yang jawabannya hampir tidak pernah berubah.
+_fish_seen = [0.0, False]
+
+
+def fish_alive(force=False):
+    if not str(state.get("fish_key") or "").strip():
+        return False
+    now = time.time()
+    if not force and now - _fish_seen[0] < 60:
+        return _fish_seen[1]
+    try:
+        fish_req("/wallet/self/api-credit", timeout=8)
+        ok = True
+    except urllib.error.HTTPError as exc:
+        # 402 berarti kuncinya sah dan dompetnya kosong -- keadaan normal di
+        # tier gratis, jadi itu bukan kunci mati.
+        ok = exc.code not in (401, 403)
+    except Exception:
+        ok = False
+    _fish_seen[0], _fish_seen[1] = now, ok
+    return ok
+
+
+def wav_repair(raw):
+    """Kembalikan panjang sebenarnya ke header WAV alir.
+
+    Fish mengirim ukuran RIFF dan data 0xFFFFFF.. -- penanda "panjang belum
+    diketahui". ffmpeg membaca sampai akhir berkas dan tidak peduli, tapi apa
+    pun yang mempercayai header melaporkan klip tiga detik sebagai tiga belas
+    jam, dan pemutar yang mempercayainya menunggu empat gigabyte yang tidak
+    akan pernah datang.
+    """
+    if len(raw) < 44 or raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+        return raw
+    b = bytearray(raw)
+    struct.pack_into("<I", b, 4, len(b) - 8)
+    off = 12
+    while off + 8 <= len(b):
+        tag = bytes(b[off:off + 4])
+        size = struct.unpack_from("<I", b, off + 4)[0]
+        if tag == b"data":
+            struct.pack_into("<I", b, off + 4, len(b) - off - 8)
+            break
+        if size > len(b):
+            # Penanda yang lain: apa pun sesudahnya tidak bisa ditemukan lagi
+            # dengan menghitung, jadi berhenti daripada menebak.
+            break
+        off += 8 + size + (size & 1)
+    return bytes(b)
+
+
+def fish_speak(text, fmt="wav", voice=None):
+    """Satu kalimat, satu permintaan terhosting.
+
+    Emoji tidak pernah disisipkan untuk mesin ini -- nada adegan itu anotasi
+    milik Irodori dan Fish tidak punya padanannya -- jadi apa pun yang sampai
+    ke sini adalah kalimat hasil mining itu sendiri, dan dikirim apa adanya.
+    """
+    ref = fish_voice_id(voice)
+    body = {"text": text, "format": fmt}
+    if ref:
+        body["reference_id"] = ref
+    if fmt == "wav":
+        body["sample_rate"] = 44100
+    raw = fish_req("/v1/tts", json.dumps(body).encode(),
+                   {"model": str(state.get("fish_model")
+                                 or "s2.1-pro-free").strip()},
+                   timeout=120)
+    return wav_repair(raw) if fmt == "wav" else raw
+
+
 def synthesize(text, speaker, jejak=None, nada=False):
     """`jejak`, kalau diberikan, diisi mesin yang benar-benar membaca kalimat
     ini. Lewat dict dan bukan variabel modul karena bridge melayani beberapa
@@ -1044,14 +1221,38 @@ def synthesize(text, speaker, jejak=None, nada=False):
         jejak["engine"] = "voicevox"
     key = (state.get("tts_engine"), speaker, text, diucap,
            state["speed"], state["intonation"],
-           state.get("irodori_voice") if irodori_on() else "")
+           state.get("irodori_voice") if irodori_on() else "",
+           # Model dan suaranya ikut: mengganti salah satunya mengubah bunyinya,
+           # dan kunci yang tidak menyebutnya akan menyajikan klip suara lama.
+           (fish_voice_id(), state.get("fish_model")) if fish_on() else "")
     if key in _cache:
-        if jejak is not None and irodori_on():
+        if jejak is not None:
             # Yang tersimpan di cache hanya hasil yang tidak jatuh-balik, jadi
-            # kalau Irodori mesinnya, klip inilah yang ia hasilkan.
-            jejak["engine"] = "irodori"
+            # klip ini pasti berasal dari mesin yang sedang dipilih.
+            if irodori_on():
+                jejak["engine"] = "irodori"
+            elif fish_on():
+                jejak["engine"] = "fish"
         return _cache[key]
     jatuh_balik = False
+    if fish_on():
+        try:
+            audio = fish_speak(diucap, "wav")
+        except Exception:
+            # Prinsip yang sama dengan Irodori: kalimat dengan suara yang salah
+            # mengalahkan kalimat yang tidak pernah datang. Ini juga yang
+            # membuat tier gratis yang suatu hari dimatikan bukan bencana --
+            # kartunya tetap dapat audio, dan X-Engine yang memberitahu.
+            if not engine_alive():
+                raise
+            jatuh_balik = True
+        if not jatuh_balik:
+            if jejak is not None:
+                jejak["engine"] = "fish"
+            if len(_cache) >= 256:
+                _cache.clear()
+            _cache[key] = audio
+            return audio
     if irodori_on():
         try:
             audio = irodori_speak(diucap, "wav")
@@ -1206,7 +1407,8 @@ class Handler(BaseHTTPRequestHandler):
         return {
             "app": "PhiCorvi",
             "version": VERSION,
-            "engine": "irodori" if irodori_on() else "voicevox",
+            "engine": ("fish" if fish_on() else
+                       "irodori" if irodori_on() else "voicevox"),
             "voicevox": {
                 "url": state.get("engine"),
                 "alive": engine_alive(),
@@ -1221,6 +1423,14 @@ class Handler(BaseHTTPRequestHandler):
                 "managed": bool(peluncur) and os.path.isfile(peluncur),
                 "running": irodori_serve_running(),
                 "voices_dir": os.path.join(rumah, "voices"),
+            },
+            "fish": {
+                "url": state.get("fish_url"),
+                "model": state.get("fish_model") or "",
+                "voice": state.get("fish_voice") or "",
+                "voices": len(fish_voice_list()),
+                "has_key": bool(str(state.get("fish_key") or "").strip()),
+                "alive": fish_alive() if fish_on() else False,
             },
             "anki_addon": find_anki_addon(),
             "scene_tone": {
@@ -1312,8 +1522,12 @@ class Handler(BaseHTTPRequestHandler):
             # Menyebut mesin yang benar-benar gagal. Sebelumnya selalu tertulis
             # "VOICEVOX unreachable" walaupun yang mati Irodori, yang mengirim
             # orang mencari-cari di tempat yang salah.
-            who, where = ("Irodori", state.get("irodori")) if irodori_on() \
-                else ("VOICEVOX", state.get("engine"))
+            if fish_on():
+                who, where = "Fish Audio", state.get("fish_url")
+            elif irodori_on():
+                who, where = "Irodori", state.get("irodori")
+            else:
+                who, where = "VOICEVOX", state.get("engine")
             self._send(
                 ("%s unreachable at %s (%s)" % (who, where, exc)).encode(),
                 "text/plain",
@@ -1416,7 +1630,13 @@ class App:
         root.title("PhiCorvi %s" % VERSION)
         # Small enough to fit a short screen; the page scrolls, so nothing is
         # ever unreachable no matter how far it is squashed.
-        root.minsize(520, 380)
+        #
+        # 560 and not 520: at 520 every tab's contents overflow by 54 px and the
+        # rightmost buttons -- Find, Start, Add, Delete -- are clipped outside
+        # the window, with no scrollbar sideways to reach them. The old number
+        # was a promise the layout could never keep. Measured by narrowing the
+        # window until something stopped fitting, not guessed.
+        root.minsize(560, 380)
         tall = min(880, root.winfo_screenheight() - 140)
         root.geometry("700x%d" % max(420, tall))
 
@@ -1725,26 +1945,39 @@ class App:
         # pindah ke Irodori tetap dimarahi "VOICEVOX is not open" padahal
         # kalimatnya terbaca dengan baik.
         pakai_iro = state.get("tts_engine") == "irodori"
+        pakai_fish = state.get("tts_engine") == "fish"
         iro_ok = bool(getattr(self, "iro_hidup", False))
+        fish_ok = bool(getattr(self, "fish_hidup", False))
         suara = str(state.get("irodori_voice") or "").strip()
+        ikan = str(state.get("fish_voice") or "").strip()
         if pakai_iro and iro_ok:
             pembaca = "Irodori" + (" · %s" % suara if suara else "")
+        elif pakai_fish and fish_ok:
+            pembaca = "Fish Audio" + (" · %s" % ikan if ikan else "")
         elif self.engine_ok:
             # Jatuh-balik itu perilaku yang disengaja, jadi disebut apa adanya
             # -- bukan disembunyikan di balik "Ready" yang sama saja bunyinya.
-            pembaca = "VOICEVOX" + (" — Irodori is not running" if pakai_iro else "")
+            pembaca = "VOICEVOX" + (
+                " — Irodori is not running" if pakai_iro else
+                " — Fish Audio is not answering" if pakai_fish else "")
         else:
             pembaca = ""
 
         if not pembaca and self.engine_ok is not None:
-            title, hint, colour = (
-                ("Nothing can read yet" if pakai_iro else "VOICEVOX is not open"),
-                ("Press Start on the Reading tab to run Irodori, or open the "
-                 "VOICEVOX app — PhiCorvi falls back to it."
-                 if pakai_iro else
-                 "Open the VOICEVOX app and wait a few seconds. It's the part "
-                 "that actually makes the sound."),
-                c["bad"])
+            if pakai_iro:
+                title = "Nothing can read yet"
+                hint = ("Press Start on the Reading tab to run Irodori, or open "
+                        "the VOICEVOX app — PhiCorvi falls back to it.")
+            elif pakai_fish:
+                title = "Nothing can read yet"
+                hint = ("Fish Audio is not answering — check the key on its "
+                        "tab, or open the VOICEVOX app, which PhiCorvi falls "
+                        "back to.")
+            else:
+                title = "VOICEVOX is not open"
+                hint = ("Open the VOICEVOX app and wait a few seconds. It's the "
+                        "part that actually makes the sound.")
+            colour = c["bad"]
         elif not running:
             title, hint, colour = (
                 "Paused",
@@ -1775,7 +2008,22 @@ class App:
         else:
             self.bridge_dot.configure(text="○ PhiCorvi  stopped", foreground=c["faint"])
 
-        if state.get("tts_engine") != "irodori":
+        # Satu baris untuk mesin saraf yang sedang dipilih. Keduanya tidak
+        # pernah aktif bersamaan, jadi dua label akan selalu menyisakan satu
+        # yang kosong -- dan baris kosong terbaca seperti sesuatu yang rusak.
+        if pakai_fish:
+            self.irodori_dot.grid()
+            if fish_ok:
+                self.irodori_dot.configure(
+                    text="● Fish Audio  %s" % (ikan or "ready"),
+                    foreground=c["ok"])
+            elif not str(state.get("fish_key") or "").strip():
+                self.irodori_dot.configure(text="○ Fish Audio  no key",
+                                           foreground=c["bad"])
+            else:
+                self.irodori_dot.configure(
+                    text="○ Fish Audio  not answering", foreground=c["bad"])
+        elif not pakai_iro:
             # Disembunyikan, bukan diredupkan: orang yang memakai VOICEVOX tidak
             # perlu satu baris tambahan tentang mesin yang tidak mereka pakai.
             self.irodori_dot.grid_remove()
@@ -2185,9 +2433,13 @@ class App:
     # -- advanced ---------------------------------------------------------
 
     def _build_advanced(self):
-        # Tiga topik yang tidak saling berhubungan: bagaimana kalimat dibaca,
-        # suara apa yang membacanya, dan dengan nada apa. Masing-masing satu tab
-        # di sebelah Home, jadi tidak ada yang tersembunyi di dasar halaman.
+        # Dua topik yang tidak saling berhubungan: bagaimana kalimat dibaca,
+        # dan dengan nada apa. Masing-masing satu tab di sebelah Home, jadi
+        # tidak ada yang tersembunyi di dasar halaman.
+        #
+        # Setelan tiap mesin tidak dapat tabnya sendiri: mesin hanya satu pada
+        # satu waktu, jadi tab kedua akan selalu berisi setelan yang tidak
+        # berlaku. Reading yang berganti isi mengikuti pilihan mesin.
         #
         # Lebar bungkus tiap catatan mengikuti jendela, bukan angka tetap.
         self.notes = []
@@ -2221,32 +2473,42 @@ class App:
         ttk.Label(baca, text="Engine", style="Card.TLabel").grid(
             row=3, column=0, sticky="w")
         self.engine_var = tk.StringVar(
-            value="Irodori" if state.get("tts_engine") == "irodori" else "VOICEVOX")
-        eng = ttk.Combobox(baca, state="readonly", width=12,
-                           values=["VOICEVOX", "Irodori"],
+            value=ENGINE_LABEL.get(state.get("tts_engine"), "VOICEVOX"))
+        eng = ttk.Combobox(baca, state="readonly", width=13,
+                           values=list(ENGINE_LABEL.values()),
                            textvariable=self.engine_var)
         eng.grid(row=3, column=1, sticky="w", padx=(10, 0))
         eng.bind("<<ComboboxSelected>>", self.on_engine_pick)
 
-        ttk.Label(baca, text="Irodori address", style="CardFaint.TLabel").grid(
-            row=4, column=0, sticky="w", pady=(8, 0))
+        # Setelan tiap mesin, dalam kotaknya sendiri. Hanya satu yang pernah
+        # berlaku sekaligus, jadi yang lain disembunyikan alih-alih diredupkan:
+        # baris Server dan Download engine tidak punya arti apa pun untuk mesin
+        # yang berjalan di server orang, dan menampilkannya cuma mengundang
+        # orang menekannya.
+        self.iro_box = ttk.Frame(baca, style="Card.TFrame")
+        self.iro_box.grid(row=4, column=0, columnspan=3, sticky="ew")
+        self.iro_box.columnconfigure(1, weight=1)
+
+        ttk.Label(self.iro_box, text="Irodori address",
+                  style="CardFaint.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(8, 0))
         self.iro_var = tk.StringVar(value=state.get("irodori") or "")
-        ttk.Entry(baca, textvariable=self.iro_var).grid(
-            row=4, column=1, sticky="ew", padx=(10, 8), pady=(8, 0))
-        self.iro_btn = ttk.Button(baca, text="Find", command=self.find_iro)
-        self.iro_btn.grid(row=4, column=2, sticky="w", pady=(8, 0))
+        ttk.Entry(self.iro_box, textvariable=self.iro_var).grid(
+            row=0, column=1, sticky="ew", padx=(10, 8), pady=(8, 0))
+        self.iro_btn = ttk.Button(self.iro_box, text="Find", command=self.find_iro)
+        self.iro_btn.grid(row=0, column=2, sticky="w", pady=(8, 0))
 
-        ttk.Label(baca, text="Server", style="CardFaint.TLabel").grid(
-            row=5, column=0, sticky="w", pady=(8, 0))
+        ttk.Label(self.iro_box, text="Server", style="CardFaint.TLabel").grid(
+            row=1, column=0, sticky="w", pady=(8, 0))
         self.iro_launch_var = tk.StringVar(value=state.get("irodori_launcher") or "")
-        ttk.Entry(baca, textvariable=self.iro_launch_var).grid(
-            row=5, column=1, sticky="ew", padx=(10, 8), pady=(8, 0))
-        self.iro_run_btn = ttk.Button(baca, text="Start",
+        ttk.Entry(self.iro_box, textvariable=self.iro_launch_var).grid(
+            row=1, column=1, sticky="ew", padx=(10, 8), pady=(8, 0))
+        self.iro_run_btn = ttk.Button(self.iro_box, text="Start",
                                       command=self.toggle_iro_server)
-        self.iro_run_btn.grid(row=5, column=2, sticky="w", pady=(8, 0))
+        self.iro_run_btn.grid(row=1, column=2, sticky="w", pady=(8, 0))
 
-        unduh = ttk.Frame(baca, style="Card.TFrame")
-        unduh.grid(row=6, column=1, columnspan=2, sticky="ew",
+        unduh = ttk.Frame(self.iro_box, style="Card.TFrame")
+        unduh.grid(row=2, column=1, columnspan=2, sticky="ew",
                    padx=(10, 0), pady=(8, 0))
         unduh.columnconfigure(1, weight=1)
         self.iro_get_btn = ttk.Button(unduh, text="Download engine",
@@ -2258,12 +2520,14 @@ class App:
         self.iro_bar.grid(row=0, column=1, sticky="ew", padx=(10, 0))
         self.iro_bar.grid_remove()
 
-        ttk.Label(baca, text="Reference voice", style="CardFaint.TLabel").grid(
-            row=7, column=0, sticky="w", pady=(8, 0))
+        ttk.Label(self.iro_box, text="Reference voice",
+                  style="CardFaint.TLabel").grid(
+            row=3, column=0, sticky="w", pady=(8, 0))
         # Bisa diketik, bukan readonly: a server that will not list its voices
         # leaves you with a name you know and nowhere to put it.
-        self.iro_pick = ttk.Combobox(baca, values=[])
-        self.iro_pick.grid(row=7, column=1, sticky="ew", padx=(10, 8), pady=(8, 0))
+        self.iro_pick = ttk.Combobox(self.iro_box, values=[])
+        self.iro_pick.grid(row=3, column=1, sticky="ew", padx=(10, 8),
+                           pady=(8, 0))
         self.iro_pick.bind("<<ComboboxSelected>>", self.on_iro_pick)
         self.iro_pick.bind("<Return>", self.on_iro_pick)
         # Tanpa <FocusOut>: ia menyimpan apa pun yang sedang tertampil ketika
@@ -2271,11 +2535,59 @@ class App:
         # mengganti suara yang dipilih tanpa ada yang memilihnya. Memilih dari
         # daftar atau menekan Enter itu perbuatan yang disengaja; kehilangan
         # fokus bukan.
-        self.iro_add_btn = ttk.Button(baca, text="Add…",
+        self.iro_add_btn = ttk.Button(self.iro_box, text="Add…",
                                       command=self.add_iro_voice)
-        self.iro_add_btn.grid(row=7, column=2, sticky="w", pady=(8, 0))
+        self.iro_add_btn.grid(row=3, column=2, sticky="w", pady=(8, 0))
 
-        self.iro_note = self._note(baca, self.engine_text(), 8)
+        # Fish Audio: tidak ada alamat, tidak ada server, tidak ada unduhan --
+        # ia berjalan di server mereka. Yang perlu diisi cuma kunci dan suara,
+        # dan suara di sini sebuah id di perpustakaan mereka, bukan rekaman.
+        self.fish_box = ttk.Frame(baca, style="Card.TFrame")
+        self.fish_box.grid(row=5, column=0, columnspan=3, sticky="ew")
+        self.fish_box.columnconfigure(1, weight=1)
+
+        self.fish_key_var = tk.StringVar(value=state.get("fish_key") or "")
+        self.fish_model_var = tk.StringVar(value=state.get("fish_model") or "")
+        for i, (teks, var, sembunyi) in enumerate((
+                ("API key", self.fish_key_var, True),
+                ("Model", self.fish_model_var, False))):
+            ttk.Label(self.fish_box, text=teks,
+                      style="CardFaint.TLabel").grid(
+                row=i, column=0, sticky="w", pady=(8, 0))
+            ttk.Entry(self.fish_box, textvariable=var,
+                      show="•" if sembunyi else "").grid(
+                row=i, column=1, columnspan=2, sticky="ew",
+                padx=(10, 0), pady=(8, 0))
+
+        ttk.Label(self.fish_box, text="Voice", style="CardFaint.TLabel").grid(
+            row=2, column=0, sticky="w", pady=(8, 0))
+        # Bisa diketik, alasan yang sama dengan pemilih Irodori: sebuah id yang
+        # ditempel langsung harus bekerja tanpa disimpan lebih dulu.
+        self.fish_pick = ttk.Combobox(self.fish_box, values=fish_voice_names())
+        self.fish_pick.set(state.get("fish_voice") or "")
+        self.fish_pick.grid(row=2, column=1, sticky="ew", padx=(10, 8),
+                            pady=(8, 0))
+        self.fish_pick.bind("<<ComboboxSelected>>", self.on_fish_pick)
+        self.fish_pick.bind("<Return>", self.on_fish_pick)
+        self.fish_del_btn = ttk.Button(self.fish_box, text="Delete",
+                                       command=self.del_fish_voice)
+        self.fish_del_btn.grid(row=2, column=2, sticky="w", pady=(8, 0))
+
+        ttk.Label(self.fish_box, text="Add voice",
+                  style="CardFaint.TLabel").grid(
+            row=3, column=0, sticky="w", pady=(8, 0))
+        self.fish_add_var = tk.StringVar()
+        tambah = ttk.Entry(self.fish_box, textvariable=self.fish_add_var)
+        tambah.grid(row=3, column=1, sticky="ew", padx=(10, 8), pady=(8, 0))
+        tambah.bind("<Return>", lambda _e: self.add_fish_voice())
+        self.fish_add_btn = ttk.Button(self.fish_box, text="Add",
+                                       command=self.add_fish_voice)
+        self.fish_add_btn.grid(row=3, column=2, sticky="w", pady=(8, 0))
+
+        # Satu catatan untuk ketiga mesin. Dua catatan berarti satu di antaranya
+        # selalu bicara tentang mesin yang tidak sedang dipakai.
+        self.iro_note = self._note(baca, self.engine_text(), 6)
+        self.show_engine_rows()
 
         # -- Scene tone ---------------------------------------------------
         # Only Irodori can be told how to read something, so this does nothing
@@ -2337,6 +2649,119 @@ class App:
             if int(lab.cget("wraplength") or 0) != lebar:
                 lab.configure(wraplength=lebar)
 
+    def show_engine_rows(self):
+        """Tampilkan setelan mesin yang dipilih, sembunyikan yang lain.
+
+        grid_remove dan bukan diredupkan: baris yang diredupkan masih mengajak
+        ditekan dan tidak menjelaskan kenapa ia tidak bisa. VOICEVOX tidak punya
+        setelan di sini sama sekali, jadi keduanya hilang.
+        """
+        mesin = state.get("tts_engine")
+        for kotak, milik in ((self.iro_box, "irodori"),
+                             (self.fish_box, "fish")):
+            if mesin == milik:
+                kotak.grid()
+            else:
+                kotak.grid_remove()
+
+    def fish_text(self):
+        # Dipanggil hanya lewat engine_text(), yang sudah memastikan mesinnya
+        # Fish -- jadi tidak ada lagi cabang "bukan mesinnya" di sini.
+        if not str(self.fish_key_var.get() or "").strip():
+            return ("Needs a key of your own, from fish.audio under API Keys. "
+                    "Without one every sentence falls back to VOICEVOX, which "
+                    "is what happens now.")
+        nama = str(state.get("fish_voice") or "").strip()
+        if not nama:
+            return ("No voice chosen yet. Paste a link like "
+                    "fish.audio/m/<id> into Add voice and its name is fetched "
+                    "for you.")
+        return ("Sentences are read by Fish Audio in the voice of %s. Scene "
+                "tone stays off here: the emoji are an Irodori annotation and "
+                "Fish has no equivalent, so they would be read out loud "
+                "instead of acted on." % nama)
+
+    def add_fish_voice(self):
+        """Turn a pasted link or id into a saved voice.
+
+        The name is asked of the catalogue rather than typed. A list of thirty-
+        two hex characters is unreadable, and a name somebody invents will not
+        match the page they found it on.
+        """
+        self.read_tuning()
+        teks = str(self.fish_add_var.get() or "").strip()
+        if not teks:
+            return
+        self.fish_add_btn.configure(state="disabled", text="…")
+
+        # Off the UI thread: this is a network call, and a frozen window is
+        # indistinguishable from a crashed one.
+        def kerja():
+            found = fish_lookup(teks)
+            self.root.after(0, lambda: self.fish_added(found))
+
+        threading.Thread(target=kerja, daemon=True).start()
+
+    def fish_added(self, found):
+        self.fish_add_btn.configure(state="normal", text="Add")
+        if not found:
+            self.iro_note.configure(
+                text="No model with that id. Paste the page link itself, like "
+                     "https://fish.audio/m/<32 hex characters>/")
+            return
+        # Ditambahkan lewat id, bukan nama: dua model boleh bernama sama, dan
+        # menambah yang sudah ada harus memperbarui, bukan menggandakan.
+        daftar = [v for v in fish_voice_list() if v["id"] != found["id"]]
+        daftar.append({"name": found["name"], "id": found["id"]})
+        state["fish_voices"] = daftar
+        state["fish_voice"] = found["name"]
+        self.fish_add_var.set("")
+        _cache.clear()
+        self.refresh_fish_voices()
+        bahasa = ", ".join(found.get("languages") or []) or "unknown"
+        self.iro_note.configure(
+            text="Added %s (%s) and made it the voice.%s"
+                 % (found["name"], bahasa,
+                    "" if state.get("tts_engine") == "fish"
+                    else " Pick Fish Audio under Reading to hear it."))
+
+    def del_fish_voice(self):
+        """Forget a saved voice. Nothing is deleted at Fish Audio, and clips
+        already made stay in Anki -- this is a list of ids, not a library."""
+        self.read_tuning()
+        nama = str(self.fish_pick.get() or "").strip()
+        semula = fish_voice_list()
+        sisa = [v for v in semula if v["name"] != nama]
+        if len(sisa) == len(semula):
+            self.iro_note.configure(
+                text="Nothing saved under that name to remove.")
+            return
+        state["fish_voices"] = sisa
+        if str(state.get("fish_voice") or "") == nama:
+            state["fish_voice"] = sisa[0]["name"] if sisa else ""
+        _cache.clear()
+        self.refresh_fish_voices()
+        self.iro_note.configure(
+            text="Removed %s. It is still on fish.audio; only this list "
+                 "forgot it." % nama)
+
+    def refresh_fish_voices(self):
+        self.fish_pick.configure(values=fish_voice_names())
+        self.fish_pick.set(state.get("fish_voice") or "")
+        self.render_status()
+
+    def on_fish_pick(self, _event=None):
+        state["fish_voice"] = str(self.fish_pick.get() or "").strip()
+        _cache.clear()          # suara lain berarti klip lain
+        self.iro_note.configure(text=self.engine_text())
+        self.iro_note.configure(text=self.engine_text())
+        self.render_status()
+
+    def on_fish_alive(self, ok):
+        self.fish_hidup = bool(ok)
+        self.iro_note.configure(text=self.engine_text())
+        self.render_status()
+
     def emotion_text(self):
         if not self.emo_on_var.get():
             return ("Off. Sentences are read in one even tone. Turn this on and "
@@ -2344,8 +2769,11 @@ class App:
                     "reads as delivery, so a line sounds like the scene it "
                     "came from.")
         if state.get("tts_engine") != "irodori":
-            return ("Needs Irodori as the engine above: VOICEVOX would read the "
-                    "emoji out loud rather than act on them.")
+            # Alasannya sama untuk kedua mesin lain, tapi menyebut yang salah
+            # mengirim orang mencari setelan di tempat yang tidak ada.
+            return ("Needs Irodori as the engine under Reading. %s would read "
+                    "the emoji out loud rather than act on them."
+                    % ENGINE_LABEL.get(state.get("tts_engine"), "VOICEVOX"))
         if not str(self.emo_key_var.get() or "").strip():
             return ("Needs a key of your own for the address above. Without one "
                     "every sentence is read plainly, which is what happens now.")
@@ -2368,9 +2796,8 @@ class App:
         except ValueError:
             pass
         try:
-            state["tts_engine"] = ("irodori"
-                                   if self.engine_var.get() == "Irodori"
-                                   else "voicevox")
+            state["tts_engine"] = ENGINE_KEY.get(self.engine_var.get(),
+                                                 "voicevox")
             state["irodori"] = self.iro_var.get().strip()
             state["irodori_launcher"] = self.iro_launch_var.get().strip()
         except (ValueError, AttributeError):
@@ -2380,6 +2807,14 @@ class App:
             state["emotion_key"] = self.emo_key_var.get().strip()
             state["emotion_model"] = self.emo_model_var.get().strip()
             state["emotion_url"] = self.emo_url_var.get().strip()
+        except (ValueError, AttributeError):
+            pass
+        try:
+            # Suaranya tidak dibaca di sini: pemilihnya bisa diketik, dan
+            # membaca apa pun yang sedang tertampil pernah mengganti suara
+            # Irodori tanpa ada yang memilihnya.
+            state["fish_key"] = self.fish_key_var.get().strip()
+            state["fish_model"] = self.fish_model_var.get().strip()
         except (ValueError, AttributeError):
             pass
 
@@ -2582,6 +3017,8 @@ class App:
             self.iro_run_btn.configure(text="Start", state="normal")
 
     def engine_text(self):
+        if state.get("tts_engine") == "fish":
+            return self.fish_text()
         if state.get("tts_engine") == "irodori":
             nama = str(state.get("irodori_voice") or "").strip()
             luar = getattr(self, "iro_hidup", False) and not irodori_serve_running()
@@ -2603,11 +3040,20 @@ class App:
     def on_engine_pick(self, _event=None):
         self.read_tuning()
         _cache.clear()          # kalimat lama dibaca mesin yang lain
+        self.show_engine_rows()
         self.iro_note.configure(text=self.engine_text())
         # Daftar suara hanya berarti untuk Irodori, dan menunggu ditekan
         # membuat kotaknya tampak rusak. Diambil sendiri begitu mesinnya dipilih.
         if state["tts_engine"] == "irodori" and str(state.get("irodori") or "").strip():
             self.find_iro()
+        if state["tts_engine"] == "fish":
+            # Di utas sendiri: ini panggilan jaringan, dan jendela yang beku
+            # tidak bisa dibedakan dari yang mati.
+            def kerja():
+                ok = fish_alive(force=True)
+                self.root.after(0, lambda: self.on_fish_alive(ok))
+
+            threading.Thread(target=kerja, daemon=True).start()
         # Only Irodori can be told a tone, so switching engines changes whether
         # the row below does anything at all.
         self.emo_note.configure(text=self.emotion_text())
@@ -2823,14 +3269,20 @@ class App:
             # dua pemeriksa yang berdetak sendiri-sendiri akan menampilkan dua
             # jawaban berbeda tentang hal yang sama.
             iro = irodori_alive() if state.get("tts_engine") == "irodori" else False
-            self.root.after(0, lambda: self.on_status(alive, iro))
+            # fish_alive menyimpan jawabannya sendiri selama semenit, jadi
+            # menumpang denyut lima detik ini tidak berarti dua belas
+            # permintaan semenit ke server orang.
+            ikan = fish_alive() if state.get("tts_engine") == "fish" else False
+            self.root.after(0, lambda: self.on_status(alive, iro, ikan))
 
         threading.Thread(target=work, daemon=True).start()
         self.root.after(5000, self.poll_status)
 
-    def on_status(self, alive, iro=None):
+    def on_status(self, alive, iro=None, ikan=None):
         was = self.engine_ok
         self.engine_ok = alive
+        if ikan is not None:
+            self.fish_hidup = ikan
         if iro is not None and not getattr(self, "iro_menunggu", False):
             sebelum = getattr(self, "iro_hidup", False)
             self.iro_hidup = iro

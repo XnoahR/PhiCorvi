@@ -31,7 +31,7 @@ A release carries two files, and they are not alternatives:
 
 | | | |
 |---|---|---|
-| `PhiCorvi.exe` | the app itself — runs the bridge, holds the settings, talks to VOICEVOX and Irodori | **required** |
+| `PhiCorvi.exe` | the app itself — runs the bridge, holds the settings, talks to VOICEVOX, Irodori and Fish Audio | **required** |
 | `PhiCorviSentenceAudio.ankiaddon` | an Anki add-on that fills the sentence-audio field on mined cards | optional |
 
 The add-on is a client of the app, not a replacement for it: all it does is send
@@ -85,7 +85,7 @@ configure.
 | **Copy** | Ready-to-paste URLs for Yomitan and Manatan. |
 | **Speak any text** | Paste a sentence or a whole paragraph, hear it, and save it as a file. |
 | **Read what I copy** | Tick it, then just select a sentence and press Ctrl+C while you read. Japanese text is spoken; URLs, code and anything too long are ignored. |
-| **Settings** | Three tabs beside Home. **Reading**: port, speed, intonation, and which engine reads the sentence. **Scene tone**: the model that marks sentences up with emotion. Lower intonation = flatter, calmer. |
+| **Settings** | Two tabs beside Home. **Reading**: port, speed, intonation, and which engine reads the sentence — its lower half swaps to whatever that engine needs, so you never see settings for one you are not using. **Scene tone**: the model that marks sentences up with emotion. Lower intonation = flatter, calmer. |
 | **Theme** | Light and dark, both blue. |
 
 Settings save to `phicorvi_config.json` beside the script.
@@ -209,26 +209,52 @@ ffmpeg of its own.
 Notes it fills get a `phicorvi-tts` tag, so synthesized audio stays
 distinguishable from real recordings.
 
-## A different reading engine
+## Other reading engines
 
 VOICEVOX is the default and stays the default. Its readings come from a
 dictionary, so a rare word is spoken correctly rather than guessed at -- which
 matters more in a vocabulary tool than the voice does.
 
-**Irodori-TTS** is the alternative: a neural engine that reads the sentence and
-copies a voice from one recording at the same time. Give it a clip of somebody
-talking and it will read your mined sentences in that voice, with no training
-step and nothing to convert afterwards.
+Two alternatives read the sentence and copy a voice at the same time, with no
+training step and nothing to convert afterwards. They differ in where they run:
 
-The **Reading** tab is where it lives:
+| | runs | voice is | costs |
+|---|---|---|---|
+| **Irodori-TTS** | your own GPU, offline | a folder of recordings | nothing, after a ~6 GB install |
+| **Fish Audio** | their servers | an id from their public library | free tier, then per character |
+
+Pick one under **Engine** on the **Reading** tab, and the rows below it change
+to whatever that engine actually needs. Nothing is greyed out: a row that does
+not apply is simply not there.
 
 ```
-Engine           [ Irodori ▾ ]
-Irodori address  [ http://127.0.0.1:8088 ]  [Find]
-Server           [ …/irodori/serve.sh ]     [Start]
-                 [Download engine]
-Reference voice  [ waguri ▾ ]               [Add…]
+Engine           [ Irodori ▾ ]                 Engine     [ Fish Audio ▾ ]
+Irodori address  [ http://127.0.0.1:8088 ]     API key    [ ●●●●●●●●●●●● ]
+Server           [ …/irodori/serve.sh ]        Model      [ s2.1-pro-free ]
+                 [Download engine]             Voice      [ Waguri ▾ ] [Delete]
+Reference voice  [ waguri ▾ ]      [Add…]      Add voice  [          ] [Add]
 ```
+
+VOICEVOX shows neither: it has no settings here at all.
+
+### Fish Audio
+
+Nothing to install and no graphics card. A voice is a model id from their
+library, so **Add voice** takes the page link -- `https://fish.audio/m/<id>` --
+or the bare id, and fetches the name for you. **Delete** forgets it again;
+nothing is removed at Fish Audio, and clips already in Anki stay.
+
+Its free tier needs a key of your own from fish.audio under API Keys. Sentences
+go to their servers, which is the real trade against Irodori: their terms say
+requests may be used to improve their models, and nothing works offline.
+
+The WAV it returns declares a placeholder length rather than the real one, so
+PhiCorvi rewrites the header before handing the audio on. Without that, anything
+trusting the header reads a three-second clip as thirteen hours.
+
+### Irodori
+
+Where it lives on the **Reading** tab, once Irodori is the engine:
 
 **Download engine** fetches the whole thing into the PhiCorvi add-on folder --
 uv, the server source, the model weights, and a launcher -- and points *Server*
@@ -263,13 +289,16 @@ generate.
 
 Two behaviours are deliberate:
 
-- **If Irodori fails and VOICEVOX is running, the sentence comes back in the
-  VOICEVOX voice** rather than not at all. That fallback is never cached, so
+- **If the chosen engine fails and VOICEVOX is running, the sentence comes back
+  in the VOICEVOX voice** rather than not at all. This is what makes a free tier
+  that ends one day an inconvenience rather than a broken card. The fallback is
+  never cached, so
   fixing the server is heard immediately instead of after the cache turns over.
   The reply carries `X-Engine`, so you can tell which one actually spoke.
 - **Everything that changes the sound is part of the cache key** -- engine,
-  voice, speed, intonation, and the emoji markup below. Change any of them and
-  the next sentence is synthesised again rather than served from before.
+  voice, speed, intonation, the Fish model, and the emoji markup below. Change
+  any of them and the next sentence is synthesised again rather than served
+  from before.
 
 ## Scene tone
 
@@ -294,8 +323,11 @@ Three things worth knowing:
 - **It costs one call per new sentence**, and the answer is kept, so replaying a
   card is free. On a free provider the call is usually the slowest part of the
   chain, and its latency varies more than the synthesis does.
+- **Irodori only.** The emoji are an Irodori annotation; VOICEVOX and Fish Audio
+  have no equivalent and would read them out loud, so scene tone never runs for
+  them.
 - **Every failure is silent and harmless.** No key, no answer, a bad reply, or
-  VOICEVOX as the engine, and the sentence is simply read plainly.
+  another engine, and the sentence is simply read plainly.
 
 ## Manatan
 

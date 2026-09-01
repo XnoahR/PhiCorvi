@@ -11,6 +11,12 @@ Anki-nya sudah terpasang — **Download engine** menaruh mesinnya di dalam folde
 add-on itu, karena cuma folder itu yang pasti dimiliki semua orang dan selamat
 waktu add-on diperbarui.
 
+> **Nggak punya kartu grafis?** **Fish Audio** mengerjakan hal yang sama di
+> server mereka: pilih di Engine pada tab Reading, tempel kunci dan tautan
+> suaranya, dan tidak ada yang perlu dipasang. Gantinya, kamu kehilangan
+> kemampuan jalan tanpa internet, dan kalimatmu dikirim ke mesin mereka. Semua
+> di bawah ini soal menjalankannya sendiri.
+
 ---
 
 ## Baca Ini Dulu

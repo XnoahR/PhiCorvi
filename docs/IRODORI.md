@@ -10,6 +10,11 @@ sentences come back in that voice.
 puts the engine inside the add-on's folder, which is the one folder every user
 has and which survives add-on upgrades.
 
+> **No graphics card?** **Fish Audio** does the same job on their servers: pick
+> it under Engine on the Reading tab, paste a key and a voice link, and there is
+> nothing to install. You give up working offline, and your sentences go to
+> their machines. Everything below is about running it yourself instead.
+
 ---
 
 ## Read this first

@@ -1482,7 +1482,13 @@ class Handler(BaseHTTPRequestHandler):
                 sid = int(asked) if asked.isdigit() else speakers[0]
                 jejak = {}
                 # Kalimat utuh dari add-on Anki: di sinilah nada adegan berarti.
-                audio = synthesize(text, sid, jejak, nada=True)
+                # Kecuali pemanggilnya bilang tidak: add-on mengirim nada=0 untuk
+                # kata tunggal, yang tidak punya adegan untuk dinadai -- dan di
+                # Irodori, satu panggilan model bahasa per kata itu mahal untuk
+                # sesuatu yang hasilnya dibuang.
+                nada = ((params.get("nada") or ["1"])[0].strip().lower()
+                        not in ("0", "false", "no", "off"))
+                audio = synthesize(text, sid, jejak, nada=nada)
                 if (params.get("format") or ["mp3"])[0] == "mp3":
                     audio, kind = to_mp3(audio)
                 else:

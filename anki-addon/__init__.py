@@ -1,10 +1,12 @@
 """
-PhiCorvi Sentence Audio -- fills a card's sentence-audio field by speaking the
-sentence with VOICEVOX.
+PhiCorvi Sentence Audio -- fills a card's empty audio fields, the word's and
+the sentence's, by having PhiCorvi read them.
 
 Mining a word from a novel gives you the sentence as text, but nothing to
 listen to: there is no recording of a novel line the way there is for an anime
-subtitle. This asks PhiCorvi to read it instead.
+subtitle. This asks PhiCorvi to read it instead. The word is read from its
+reading field where the note type has one -- a mined 引数 is ひきすう, and no
+engine reading the kanji cold would get that right.
 
 Audio comes from PhiCorvi's bridge rather than straight from VOICEVOX, because
 PhiCorvi runs outside the Anki sandbox where ffmpeg lives, and can hand back
@@ -122,16 +124,23 @@ HAS_JP = re.compile(r"[぀-ヿ一-鿿]")
 
 # ------------------------------------------------------------------ the audio
 
-def fetch(text, cfg):
-    """Ask PhiCorvi to read a sentence.
+def fetch(text, cfg, nada=True):
+    """Ask PhiCorvi to read something.
 
     The voice is deliberately not sent unless someone has pinned one here: two
     places holding a voice setting means the one you cannot see wins, and it did
     -- every mined sentence came out in the whisper voice while the app showed
     something else. Left at 0, PhiCorvi's own first voice is used, so changing it
     in the app changes it here.
+
+    `nada` is off for single words. A word has no scene to have a tone, and on
+    an engine that marks tone up with a language model, asking for one buys ten
+    seconds of queue per word for nothing. A bridge that predates the
+    parameter ignores it and behaves as it always did.
     """
     params = {"text": text, "format": cfg["format"]}
+    if not nada:
+        params["nada"] = "0"
     try:
         pinned = int(cfg["speaker"])
     except (TypeError, ValueError):
@@ -160,14 +169,19 @@ def store(col, text, speaker, data, kind):
 # ---------------------------------------------------------------- the targets
 
 def resolved(col):
-    """Config targets paired with the ordinals they actually map to, skipping
-    any whose note type or field the collection does not have.
+    """Every field the config asks to fill and the collection actually has.
 
-    A target may name several sentence fields. People turn off Yomitan's plain
+    One entry per audio field, not per target: a target may name a sentence pair
+    and a word pair, and each entry carries every name and ordinal it will need.
+    Looking the target back up by note type later is how the second pair came to
+    search with the first pair's audio field -- the lookup found the first match
+    and stopped.
+
+    A pair may list several source fields. People turn off Yomitan's plain
     {sentence} when a source gives it messy text, and keep only the furigana
-    one -- the sentence is still there, just wrapped in ruby. Reading it out of
-    whichever field is populated beats asking anyone to change their mining
-    setup to suit this add-on.
+    one; JPMN keeps the word's reading in a field of its own. The first field
+    with something in it is read, so nobody has to change their mining setup to
+    suit this add-on.
     """
     out = []
     for t in conf()["targets"]:
@@ -175,23 +189,34 @@ def resolved(col):
         if not model:
             continue
         ords = {f["name"]: f["ord"] for f in model["flds"]}
-        wanted = t.get("sentence")
-        wanted = [wanted] if isinstance(wanted, str) else list(wanted or [])
-        names = [n for n in wanted if n in ords]
-        if names and t.get("audio") in ords:
-            out.append((model["id"], t["notetype"],
-                        [ords[n] for n in names], ords[t["audio"]], names))
+        for jenis, k_src, k_audio in (("sentence", "sentence", "audio"),
+                                      ("word", "word", "word_audio")):
+            wanted = t.get(k_src)
+            wanted = [wanted] if isinstance(wanted, str) else list(wanted or [])
+            names = [n for n in wanted if n in ords]
+            audio = t.get(k_audio)
+            if names and audio in ords:
+                out.append({
+                    "mid": model["id"], "notetype": t["notetype"], "jenis": jenis,
+                    "src_names": names, "src_ords": [ords[n] for n in names],
+                    "audio_name": audio, "audio_ord": ords[audio],
+                })
     return out
 
 
 def pending(col, extra=""):
-    """Note ids that have a sentence somewhere but no sentence audio."""
-    found = []
-    for _mid, name, s_ords, a_ord, s_names in resolved(col):
-        t = next(x for x in conf()["targets"] if x["notetype"] == name)
-        any_sentence = " or ".join('-"%s:"' % n for n in s_names)
+    """Notes with something to read and no audio for it, grouped by note.
+
+    Grouped, because a note can need both its word and its sentence filled, and
+    two Note objects for one id written in the same batch overwrite each other:
+    the second was loaded before the first was saved, and carries the old empty
+    field back over the new one. One Note per id, every field on it.
+    """
+    per_note = {}
+    for spec in resolved(col):
+        any_src = " or ".join('-"%s:"' % n for n in spec["src_names"])
         query = '"note:%s" "%s:" (%s)' % (
-            name.replace('"', '\\"'), t["audio"], any_sentence)
+            spec["notetype"].replace('"', '\\"'), spec["audio_name"], any_src)
         if extra:
             query = "%s (%s)" % (query, extra)
         try:
@@ -199,47 +224,59 @@ def pending(col, extra=""):
         except Exception:
             log("pencarian gagal: %s" % query)
             continue
-        found.extend((nid, s_ords, a_ord) for nid in ids)
-    return found
+        for nid in ids:
+            per_note.setdefault(nid, []).append(spec)
+    return sorted(per_note.items())
 
 
 def fill(col, jobs, cfg, on_progress=None):
-    """Synthesize and write. Returns (done, skipped, [errors])."""
+    """Synthesize and write. Returns (done, skipped, [errors]).
+
+    `done` counts fields, not notes: a note that got both its word and its
+    sentence counts twice, and that is the number the person waiting sees.
+    """
     done = skipped = 0
     errors = []
     notes = []
     limit = int(cfg["max_chars"])
-    for i, (nid, s_ords, a_ord) in enumerate(jobs):
+    for i, (nid, specs) in enumerate(jobs):
         if on_progress and not on_progress(i, len(jobs)):
             break
         note = col.get_note(nid)
-        if note.fields[a_ord].strip():
-            skipped += 1
-            continue
-        text = ""
-        for s_ord in s_ords:
-            text = clean(note.fields[s_ord])
-            if text:
-                break
-        if not text or not HAS_JP.search(text) or len(text) > limit:
-            skipped += 1
-            continue
-        try:
-            data, kind, voice = fetch(text, cfg)
-            name = store(col, text, voice, data, kind)
-        except Exception as exc:
-            errors.append("%s: %s" % (text[:24], exc))
-            if len(errors) >= 5:
-                break
-            continue
-        note.fields[a_ord] = "[sound:%s]" % name
-        if cfg["tag"]:
-            note.add_tag(cfg["tag"])
-        notes.append(note)
-        done += 1
-        if len(notes) >= 20:
-            col.update_notes(notes)
-            notes = []
+        changed = False
+        for spec in specs:
+            a_ord = spec["audio_ord"]
+            if note.fields[a_ord].strip():
+                skipped += 1
+                continue
+            text = ""
+            for s_ord in spec["src_ords"]:
+                text = clean(note.fields[s_ord])
+                if text:
+                    break
+            if not text or not HAS_JP.search(text) or len(text) > limit:
+                skipped += 1
+                continue
+            try:
+                data, kind, voice = fetch(text, cfg, nada=spec["jenis"] == "sentence")
+                name = store(col, text, voice, data, kind)
+            except Exception as exc:
+                errors.append("%s: %s" % (text[:24], exc))
+                if len(errors) >= 5:
+                    break
+                continue
+            note.fields[a_ord] = "[sound:%s]" % name
+            changed = True
+            done += 1
+        if changed:
+            if cfg["tag"]:
+                note.add_tag(cfg["tag"])
+            notes.append(note)
+            if len(notes) >= 20:
+                col.update_notes(notes)
+                notes = []
+        if len(errors) >= 5:
+            break
     if notes:
         col.update_notes(notes)
     return done, skipped, errors
@@ -308,7 +345,7 @@ def _sweep():
         log("sapuan: selesai, terisi %d, error %s" % (n, errors or "tidak ada"))
         if n:
             mw.reset()
-            tooltip("PhiCorvi: %d audio kalimat ditambahkan" % n)
+            tooltip("PhiCorvi: %d audio ditambahkan" % n)
         elif errors:
             tooltip("PhiCorvi: gagal - %s" % errors[0][:60])
         if rest > 0:
@@ -330,26 +367,34 @@ def run_bulk(nids=None):
         wanted = set(nids)
         jobs = [j for j in pending(mw.col) if j[0] in wanted]
         where = "kartu terpilih"
+    n_kolom = sum(len(specs) for _, specs in jobs)
+    # Dicatat sebelum dialog apa pun: "tidak jalan" tanpa log berarti menebak
+    # apakah yang kosong itu pencariannya, koneksinya, atau memang kartunya.
+    log("bulk: %s -> %d note, %d kolom" % (where, len(jobs), n_kolom))
     if not jobs:
-        showInfo("Tidak ada kartu yang perlu diisi (%s)." % where)
+        showInfo("Tidak ada kolom audio yang perlu diisi (%s).\n\n"
+                 "Yang dicari: note type di daftar targets, field sumbernya ada "
+                 "isinya, field audionya kosong." % where)
         return
     try:
         urllib.request.urlopen(cfg["bridge"].rstrip("/") + "/list?term=%E7%8C%AB", timeout=5).read()
-    except Exception:
+    except Exception as exc:
+        log("bulk: PhiCorvi tidak menjawab di %s: %s" % (cfg["bridge"], exc))
         showWarning(
             "PhiCorvi tidak menjawab di %s.\n\n"
-            "Buka aplikasi PhiCorvi dulu, pastikan VOICEVOX-nya hidup, "
+            "Buka aplikasi PhiCorvi dulu, pastikan mesin suaranya hidup, "
             "lalu coba lagi." % cfg["bridge"]
         )
         return
     if not askUser(
-        "Isi audio kalimat untuk %d kartu (%s)?\n\n"
+        "Isi %d kolom audio di %d note (%s)?\n\n"
         "Perkiraan waktu: sekitar %d menit.\n"
         "Suara: %s. Bisa dibatalkan di tengah jalan."
-        % (len(jobs), where, max(1, round(len(jobs) * 2.5 / 60)),
+        % (n_kolom, len(jobs), where, max(1, round(n_kolom * 2.5 / 60)),
            "ikut PhiCorvi" if int(cfg["speaker"] or 0) <= 0
            else "speaker %s" % cfg["speaker"])
     ):
+        log("bulk: dibatalkan di dialog")
         return
 
     def work(col):
@@ -358,7 +403,7 @@ def run_bulk(nids=None):
                 return False
             mw.taskman.run_on_main(
                 lambda: mw.progress.update(
-                    label="PhiCorvi: %d / %d kalimat" % (i, total), value=i, max=total
+                    label="PhiCorvi: %d / %d note" % (i, total), value=i, max=total
                 )
             )
             return True
@@ -367,8 +412,9 @@ def run_bulk(nids=None):
 
     def done(result):
         n, skipped, errors = result
+        log("bulk: selesai, terisi %d, dilewati %d, error %s" % (n, skipped, errors or "tidak ada"))
         mw.reset()
-        msg = "Selesai: %d kartu terisi." % n
+        msg = "Selesai: %d kolom audio terisi." % n
         if skipped:
             msg += "\n%d dilewati (sudah ada audio, kosong, atau terlalu panjang)." % skipped
         if errors:
@@ -378,12 +424,12 @@ def run_bulk(nids=None):
     from aqt.operations import QueryOp
 
     QueryOp(parent=mw, op=work, success=done).with_progress(
-        "PhiCorvi: membuat audio kalimat"
+        "PhiCorvi: membuat audio"
     ).run_in_background()
 
 
 def on_browser_menus(browser):
-    act = QAction("PhiCorvi: isi audio kalimat", browser)
+    act = QAction("PhiCorvi: isi audio", browser)
     act.triggered.connect(lambda _=False, b=browser: run_bulk(b.selected_notes()))
     browser.form.menu_Notes.addAction(act)
 
@@ -450,7 +496,7 @@ def set_auto(on):
     raw["auto"] = bool(on)
     mw.addonManager.writeConfig(ADDON, raw)
     log("auto -> %s" % bool(on))
-    tooltip("Audio kalimat otomatis: %s" % ("nyala" if on else "mati"), period=3000)
+    tooltip("Audio otomatis: %s" % ("nyala" if on else "mati"), period=3000)
 
 
 HOME = os.path.dirname(os.path.abspath(__file__))
@@ -482,7 +528,7 @@ def say_hello():
 def setup():
     menu = mw.form.menuTools.addMenu("PhiCorvi")
 
-    auto = QAction("Isi audio kalimat otomatis saat mining", mw)
+    auto = QAction("Isi audio otomatis saat mining", mw)
     auto.setCheckable(True)
     auto.setChecked(bool(conf()["auto"]))
     auto.setToolTip("Matikan kalau audio kalimatnya sudah datang dari sumber "
@@ -491,7 +537,7 @@ def setup():
     menu.addAction(auto)
 
     menu.addSeparator()
-    act = QAction("Isi audio kalimat yang kosong…", mw)
+    act = QAction("Isi audio yang kosong…", mw)
     act.triggered.connect(lambda _=False: run_bulk(None))
     menu.addAction(act)
     mw.progress.single_shot(8000, check_update, True)

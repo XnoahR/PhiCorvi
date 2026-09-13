@@ -14,7 +14,12 @@
         "Sentence",
         "SentenceFurigana"
       ],
-      "audio": "SentenceAudio"
+      "audio": "SentenceAudio",
+      "word": [
+        "ExpressionReading",
+        "Expression"
+      ],
+      "word_audio": "ExpressionAudio"
     },
     {
       "notetype": "Lapis (Jiten)",
@@ -22,7 +27,12 @@
         "Sentence",
         "SentenceFurigana"
       ],
-      "audio": "SentenceAudio"
+      "audio": "SentenceAudio",
+      "word": [
+        "ExpressionReading",
+        "Expression"
+      ],
+      "word_audio": "ExpressionAudio"
     },
     {
       "notetype": "Lapis",
@@ -30,7 +40,12 @@
         "Sentence",
         "SentenceFurigana"
       ],
-      "audio": "SentenceAudio"
+      "audio": "SentenceAudio",
+      "word": [
+        "ExpressionReading",
+        "Expression"
+      ],
+      "word_audio": "ExpressionAudio"
     },
     {
       "notetype": "JP Mining Note",
@@ -38,7 +53,25 @@
         "Sentence",
         "SentenceReading"
       ],
-      "audio": "SentenceAudio"
+      "audio": "SentenceAudio",
+      "word": [
+        "WordReadingHiragana",
+        "Word"
+      ],
+      "word_audio": "WordAudio"
+    },
+    {
+      "notetype": "Retro (Kiku)",
+      "sentence": [
+        "Sentence",
+        "SentenceFurigana"
+      ],
+      "audio": "SentenceAudio",
+      "word": [
+        "ExpressionReading",
+        "Expression"
+      ],
+      "word_audio": "ExpressionAudio"
     }
   ]
 }
